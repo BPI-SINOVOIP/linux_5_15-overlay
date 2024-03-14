@@ -21,6 +21,7 @@
 #include <drm/drm_panel.h>
 
 #include "panel/panel.h"
+#include "bridge/syna_bridge.h"
 
 typedef struct panel_timing_info_t {
 	unsigned int hact;
@@ -95,6 +96,7 @@ static int syna_panel_dsi_prepare(struct drm_panel *panel)
 	/* Release MIPI from Reset */
 	gpiod_set_value_cansleep(synaPanelInfo.mipirst, 0);
 	syna_dsi_panel_send_cmd(synaPanelInfo.cmdsize, synaPanelInfo.cmd);
+	syna_bridge_modeset(&synaPanelTimings);
 
 	return 0;
 }
@@ -274,11 +276,19 @@ int syna_panel_dsi_init(struct platform_device *pdev)
 
 	drm_panel_add(dsi_panel);
 
+	err = syna_bridge_init(pdev);
+	if (err) {
+		pr_warn("Bridge init failed\n");
+	}
+
 	return err;
 }
 
 void syna_panel_dsi_deinit(void)
 {
+	syna_bridge_deinit();
+	kfree(synaPanelInfo.cmd);
+
 	if (dsi_panel->backlight)
 		put_device(&dsi_panel->backlight->dev);
 

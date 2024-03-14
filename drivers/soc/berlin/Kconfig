@@ -165,6 +165,13 @@ config SYNA_DRM
 	help
 	  synaptics drm display support
 
+config SYNA_DRM_BRIDGE_LT9611
+	bool "syna compatible lt9611 drm bridge"
+	default n
+	depends on SYNA_DRM
+	help
+	  syna compatible lt9611 drm bridge
+
 config SYNA_MC_DFC
 	tristate "Support MC hwcc"
 	default n
