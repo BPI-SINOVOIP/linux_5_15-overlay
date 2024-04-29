@@ -34,6 +34,7 @@
 #define V4L2_CID_USER_BERLIN_BASE       (V4L2_CID_USER_BASE + 0x1090)
 #define V4L2_CID_IOMMU_OUTPUT_BUFFER    (V4L2_CID_USER_BERLIN_BASE + 0)
 #define V4L2_CID_IOMMU_CAPTURE_BUFFER   (V4L2_CID_USER_BERLIN_BASE + 1)
+#define V4L2_CID_OUTPUT_BUFFER_TYPE     (V4L2_CID_USER_BERLIN_BASE + 2)
 
 #define SCALER_MAX_CTRL_NUM             10
 #define SCALER_DELAYED_WORK_DELAY       (30 * 1000)
@@ -41,6 +42,8 @@
 #define Y_PLANE                         0
 #define UV_PLANE                        1
 #define SYNA_SCALER_MAX_BUF_SLOT        (32U)
+#define CONTIGOUS_MEMORY_TYPE           0
+#define NON_CONTIGOUS_MEMORY_TYPE       1
 
 #define SYNA_DRIVER_NAME                "syna-scaler"
 #define SYNA_CARD_TYPE                  "dolphin-isp"
@@ -268,7 +271,7 @@ static inline unsigned long get_physical_address(bool is_io_mmu_enable,
 }
 
 static int m2m_scaler_get_addr(struct m2m_scaler_ctx *ctx, struct vb2_buffer *vb,
-		struct frame_info *frame, short is_io_mmu_enable,
+		struct frame_info *frame, short is_io_mmu_enable, short buffer_type,
 		void **paddr, void **vaddr)
 {
 	if (!vb || !frame)
@@ -276,8 +279,13 @@ static int m2m_scaler_get_addr(struct m2m_scaler_ctx *ctx, struct vb2_buffer *vb
 
 	paddr[0] = (void *) get_physical_address(is_io_mmu_enable,
 			isp_dma_heap_plane_cookie(vb, Y_PLANE));
-	paddr[1] = (void *) get_physical_address(is_io_mmu_enable,
-			isp_dma_heap_plane_cookie(vb, UV_PLANE));
+
+	if (buffer_type == NON_CONTIGOUS_MEMORY_TYPE)
+		paddr[1] = (void *) get_physical_address(is_io_mmu_enable,
+				isp_dma_heap_plane_cookie(vb, UV_PLANE));
+	else
+		paddr[1] = (paddr[0] +
+				frame->bytesperline * frame->height);
 
 #ifdef BYPASS_SCALER_DRIVER
 	*vaddr = vb2_plane_vaddr(vb, 0);
@@ -301,14 +309,16 @@ static int m2m_scaler_get_bufs(struct m2m_scaler_ctx *ctx)
 
 	src_vb = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
 	ret = m2m_scaler_get_addr(ctx, &src_vb->vb2_buf, src,
-			ctx->io_mmu_buffer_output, src->paddr, &src->vaddr);
+			ctx->io_mmu_buffer_output, ctx->output_buffer_memory_type,
+			src->paddr, &src->vaddr);
 
 	if (ret)
 		return ret;
 
 	dst_vb = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
 	ret = m2m_scaler_get_addr(ctx, &dst_vb->vb2_buf, dst,
-			ctx->io_mmu_buffer_capture, dst->paddr, &dst->vaddr);
+			ctx->io_mmu_buffer_capture, NON_CONTIGOUS_MEMORY_TYPE,
+			dst->paddr, &dst->vaddr);
 
 	if (ret)
 		return ret;
@@ -392,6 +402,11 @@ static int m2m_scaler_s_ctrl(struct v4l2_ctrl *ctrl)
 		dev_info(ctx->m2m_scaler_dev->dev, "io_mmu_buffer_capture = %d\n",
 				ctx->io_mmu_buffer_capture);
 		break;
+	case V4L2_CID_OUTPUT_BUFFER_TYPE:
+		ctx->output_buffer_memory_type = ctrl->val;
+		dev_info(ctx->m2m_scaler_dev->dev, "output buffer type = %d\n",
+				ctx->output_buffer_memory_type);
+		break;
 	default:
 		dev_err(ctx->m2m_scaler_dev->dev, "unknown control %d\n", ctrl->id);
 		ret = -EINVAL;
@@ -401,6 +416,8 @@ static int m2m_scaler_s_ctrl(struct v4l2_ctrl *ctrl)
 			ctx->io_mmu_buffer_output);
 	dev_info(ctx->m2m_scaler_dev->dev, "capture buffer: io_mmu = %d\n",
 			ctx->io_mmu_buffer_capture);
+	dev_info(ctx->m2m_scaler_dev->dev, "output buffer type = %d\n",
+			ctx->output_buffer_memory_type);
 out:
 	return ret;
 }
@@ -431,6 +448,16 @@ static struct v4l2_ctrl_config io_mmu_capture_buffer = {
 	.def = 1, /* 0 -io_mmu disable , 1 -io_mmu enable */
 };
 
+static struct v4l2_ctrl_config output_buffer_memory_type = {
+	.ops = &scaler_c_ops,
+	.id = V4L2_CID_OUTPUT_BUFFER_TYPE,
+	.name = "OUTPUT BUFFER TYPE",
+	.type = V4L2_CTRL_TYPE_BOOLEAN,
+	.min = 0,
+	.max = 1,
+	.step = 1,
+	.def = 1, /* 0 -contigous , 1 - non contigoues */
+};
 static int m2m_scaler_ctrls_create(struct m2m_scaler_ctx *ctx)
 {
 	int err = 0;
@@ -444,6 +471,8 @@ static int m2m_scaler_ctrls_create(struct m2m_scaler_ctx *ctx)
 			&io_mmu_output_buffer, NULL);
 	ctx->m2m_scaler_ctrls.io_mmu_buffer_capture_ctrl = v4l2_ctrl_new_custom(&ctx->ctrl_handler,
 			&io_mmu_capture_buffer, NULL);
+	ctx->m2m_scaler_ctrls.output_buffer_memory_type_ctrl =
+			v4l2_ctrl_new_custom(&ctx->ctrl_handler, &output_buffer_memory_type, NULL);
 
 	if (ctx->ctrl_handler.error) {
 		err = ctx->ctrl_handler.error;
@@ -454,6 +483,7 @@ static int m2m_scaler_ctrls_create(struct m2m_scaler_ctx *ctx)
 
 	ctx->io_mmu_buffer_output = io_mmu_output_buffer.def;
 	ctx->io_mmu_buffer_capture = io_mmu_capture_buffer.def;
+	ctx->output_buffer_memory_type = output_buffer_memory_type.def;
 	ctx->ctrls_rdy = true;
 
 	return 0;
@@ -502,6 +532,7 @@ static int m2m_scaler_queue_setup(struct vb2_queue *vq,
 	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
 		mem_type = ctx->io_mmu_buffer_output ?
 		SHM_NONSECURE_NON_CONTIG : SHM_NONSECURE_CONTIG;
+		*nb_planes = ctx->output_buffer_memory_type ? 2 : 1;
 		break;
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
 		mem_type = ctx->io_mmu_buffer_capture ?
@@ -512,7 +543,10 @@ static int m2m_scaler_queue_setup(struct vb2_queue *vq,
 		return -EINVAL;
 	}
 	for (i = 0; i < *nb_planes; ++i) {
-		sizes[i] = frame->sizeimage >> i;
+		if (*nb_planes == 1)
+			sizes[i] = frame->sizeimage;
+		else
+			sizes[i] = frame->sizeimage >> i;
 		alloc_devs[i] = ctx->m2m_scaler_dev->alloc_dev[mem_type];
 	}
 	return 0;
@@ -651,15 +685,31 @@ static int m2m_scaler_querycap(struct file *file, void *fh,
 	return 0;
 }
 
+static void m2m_scaler_check_contigous_memory_required(struct m2m_scaler_ctx *ctx, int type,
+		struct v4l2_pix_format_mplane *pix_mp)
+{
+	if (ctx->output_buffer_memory_type == CONTIGOUS_MEMORY_TYPE &&
+			type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+		pix_mp->num_planes = 1;
+		pix_mp->pixelformat = V4L2_PIX_FMT_NV12;
+	}
+}
+
 static int m2m_scaler_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
 {
 	const struct m2m_scaler_fmt *fmt;
+	struct m2m_scaler_ctx *ctx = fh_to_ctx(fh);
 
 	if (f->index >= ARRAY_SIZE(m2m_scaler_formats))
 		return -EINVAL;
 
 	fmt = &m2m_scaler_formats[f->index];
 	f->pixelformat = fmt->pixelformat;
+
+	if (ctx->output_buffer_memory_type == CONTIGOUS_MEMORY_TYPE &&
+			f->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+		f->pixelformat = V4L2_PIX_FMT_NV12;
+	}
 
 	return 0;
 }
@@ -736,7 +786,9 @@ static int m2m_scaler_g_fmt_mp(struct file *file, void *fh, struct v4l2_format *
 	}
 	pix_mp->num_planes = frame->fmt->nb_planes;
 
+	m2m_scaler_check_contigous_memory_required(ctx, fmt->type, pix_mp);
 	print_v4l2_pix_format_mplane(pix_mp);
+
 	dev_dbg(ctx->m2m_scaler_dev->dev, "%s: with w:%d h:%d str:%d size %d\n",
 			__func__, frame->width, frame->height,
 			frame->bytesperline, frame->sizeimage);
@@ -764,17 +816,23 @@ static int m2m_scaler_try_fmt_out_mp(struct file *file, void *fh, struct v4l2_fo
 	u32 orig_width, orig_height;
 	int ret = 0;
 
-	/* Check if the hardware supports the requested format, use the default
-	 * format otherwise.
-	 */
-	format = m2m_scaler_find_fmt(pix_mp->pixelformat);
-	if (!format) {
-		dev_dbg(ctx->m2m_scaler_dev->dev, "Unknown format 0x%x\n",
-				pix_mp->pixelformat);
-		m2m_scaler_g_fmt_mp(file, fh, fmt);
-		return ret;
+
+	if (ctx->output_buffer_memory_type == CONTIGOUS_MEMORY_TYPE &&
+			pix_mp->pixelformat == V4L2_PIX_FMT_NV12) {
+		dev_dbg(ctx->m2m_scaler_dev->dev, "contigous buffer req\n");
+	} else {
+		/* Check if the hardware supports the requested format, use the default
+		 * * format otherwise.
+		 */
+		format = m2m_scaler_find_fmt(pix_mp->pixelformat);
+		if (!format) {
+			dev_dbg(ctx->m2m_scaler_dev->dev, "Unknown format 0x%x\n",
+					pix_mp->pixelformat);
+			m2m_scaler_g_fmt_mp(file, fh, fmt);
+			return ret;
+		}
+		pix_mp->pixelformat = format->pixelformat;
 	}
-	pix_mp->pixelformat = format->pixelformat;
 
 	frame =  &ctx->src;
 
@@ -798,6 +856,7 @@ static int m2m_scaler_try_fmt_out_mp(struct file *file, void *fh, struct v4l2_fo
 	}
 	pix_mp->field = V4L2_FIELD_NONE;
 
+	m2m_scaler_check_contigous_memory_required(ctx, fmt->type, pix_mp);
 	print_v4l2_pix_format_mplane(pix_mp);
 	return ret;
 }
@@ -896,6 +955,8 @@ static int m2m_scaler_s_fmt_mp(struct file *file, void *fh, struct v4l2_format *
 	frame->crop.height = frame->height;
 	frame->crop.left = 0;
 	frame->crop.top = 0;
+
+	m2m_scaler_check_contigous_memory_required(ctx, fmt->type, pix_mp);
 
 	dev_dbg(ctx->m2m_scaler_dev->dev, "%s: with w:%d h:%d stride:%d size %d\n",
 			__func__, frame->width, frame->height,

@@ -662,12 +662,11 @@ static void *vb2_isp_dma_heap_attach_dmabuf(struct vb2_buffer *vb,
 
 	ret = bm_fetch_pt(dbuf, &buf->pt_param);
 	if (ret) {
-		pr_err("bm refuse to register: %d\n", ret);
-		kfree(buf);
-		return ERR_PTR(-EINVAL);
+		pr_debug("bm refuse to register: %d\n", ret);
+	} else {
+		buf->paddr_pt = (void *)buf->pt_param.phy_addr;
 	}
 
-	buf->paddr_pt = (void *)buf->pt_param.phy_addr;
 	buf->dev = dev;
 	buf->vb = vb;
 	buf->cookie = dbuf;

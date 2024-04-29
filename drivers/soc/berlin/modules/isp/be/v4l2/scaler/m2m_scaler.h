@@ -23,12 +23,12 @@
 /* struct m2m_scaler_ctrls - scaler control set
  * @io_mmu_buffer_output_ctrl:      output buffer is io mmu or not
  * @io_mmu_buffer_capture_ctrl:     capture buffer is io mmu or not
+ * @output_buffer_memory_type_ctrl: output buffer is noncontigous or not
  */
 struct m2m_scaler_ctrls {
 	struct v4l2_ctrl            *io_mmu_buffer_output_ctrl;
 	struct v4l2_ctrl            *io_mmu_buffer_capture_ctrl;
-	struct v4l2_ctrl            *mplane_buffer_output_ctrl;
-	struct v4l2_ctrl            *mplane_buffer_capture_ctrl;
+	struct v4l2_ctrl            *output_buffer_memory_type_ctrl;
 };
 
 /**
@@ -44,6 +44,7 @@ struct m2m_scaler_ctrls {
  * @m2m_scaler_ctrls: v4l2 controls for the context
  * @io_mmu_buffer_output:      output buffer is io mmu or not
  * @io_mmu_buffer_capture:     capture buffer is io mmu or not
+ * @output_buffer_memory_type: output buffer type is noncontigous or not
  * @ctrls_rdy:    whether v4l2 controls are ready to use
  */
 struct m2m_scaler_ctx {
@@ -61,8 +62,7 @@ struct m2m_scaler_ctx {
 	struct m2m_scaler_ctrls     m2m_scaler_ctrls;
 	u8                          io_mmu_buffer_output;
 	u8                          io_mmu_buffer_capture;
-	u8                          mplane_buffer_output;
-	u8                          mplane_buffer_capture;
+	u8                          output_buffer_memory_type;
 	bool                        ctrls_rdy;
 	struct mutex                lock;
 	struct completion           work_done;
