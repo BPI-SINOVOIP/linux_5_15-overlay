@@ -713,15 +713,12 @@ static int m2m_scaler_g_fmt_mp(struct file *file, void *fh, struct v4l2_format *
 	pix_mp->height = frame->height;
 	pix_mp->field = frame->field;
 
-	pix_mp->width = ALIGN(pix_mp->width, MTR_ACTIVE_WIDTH_ALIGNMENT);
-	pix_mp->height = ALIGN(pix_mp->height, MTR_ACTIVE_HEIGHT_ALIGNMENT);
-
-	orig_width = pix_mp->width;
-	orig_height = pix_mp->height;
-
 	if ((fmt->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE && ctx->io_mmu_buffer_output) ||
 			(fmt->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE &&
 			 ctx->io_mmu_buffer_capture)) {
+
+		orig_width = ALIGN(pix_mp->width, MTR_ACTIVE_WIDTH_ALIGNMENT);
+		orig_height = ALIGN(pix_mp->height, MTR_ACTIVE_HEIGHT_ALIGNMENT);
 
 		align_width = (fmt->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) ?
 			MTR_CONTENT_WIDTH_ALIGNMENT : MTR_OUTPUT_WIDTH_ALIGNMENT;
@@ -784,12 +781,9 @@ static int m2m_scaler_try_fmt_out_mp(struct file *file, void *fh, struct v4l2_fo
 	if (frame == NULL)
 		return -EINVAL;
 
-	pix_mp->width = ALIGN(pix_mp->width, MTR_ACTIVE_WIDTH_ALIGNMENT);
-	pix_mp->height = ALIGN(pix_mp->height, MTR_ACTIVE_HEIGHT_ALIGNMENT);
-
 	if (ctx->io_mmu_buffer_output) {
-		orig_width = pix_mp->width;
-		orig_height = pix_mp->height;
+		orig_width = ALIGN(pix_mp->width, MTR_ACTIVE_WIDTH_ALIGNMENT);
+		orig_height = ALIGN(pix_mp->height, MTR_ACTIVE_HEIGHT_ALIGNMENT);
 		v4l2_fill_pixfmt_mp(pix_mp,
 				pix_mp->pixelformat,
 				ALIGN(pix_mp->width, MTR_CONTENT_WIDTH_ALIGNMENT),
@@ -834,12 +828,9 @@ static int m2m_scaler_try_fmt_cap_mp(struct file *file, void *fh, struct v4l2_fo
 	if (frame == NULL)
 		return -EINVAL;
 
-	pix_mp->width = ALIGN(pix_mp->width, MTR_ACTIVE_WIDTH_ALIGNMENT);
-	pix_mp->height = ALIGN(pix_mp->height, MTR_ACTIVE_HEIGHT_ALIGNMENT);
-
 	if (ctx->io_mmu_buffer_capture) {
-		orig_width = pix_mp->width;
-		orig_height = pix_mp->height;
+		orig_width = ALIGN(pix_mp->width, MTR_ACTIVE_WIDTH_ALIGNMENT);
+		orig_height = ALIGN(pix_mp->height, MTR_ACTIVE_HEIGHT_ALIGNMENT);
 		v4l2_fill_pixfmt_mp(pix_mp,
 				pix_mp->pixelformat,
 				ALIGN(pix_mp->width, MTR_OUTPUT_WIDTH_ALIGNMENT),
