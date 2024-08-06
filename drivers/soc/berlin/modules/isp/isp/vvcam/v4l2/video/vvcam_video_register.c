@@ -71,6 +71,9 @@
 #include "vvcam_video_register.h"
 #include "vvcam_v4l2_common.h"
 #include "vvcam_video_event.h"
+#ifdef DOLPHIN
+#include "isp_dma_heap.h"
+#endif
 
 static struct vvcam_video_fmt_info vvcam_formats_info[] = {
     {
@@ -158,17 +161,23 @@ static int vvcam_video_fourcc_to_mbus(uint32_t fourcc, uint32_t *mbus)
 static int vvcam_video_vfmt_to_mfmt(struct v4l2_format *f, struct v4l2_subdev_format *mfmt)
 {
     int ret;
+    const struct v4l2_format_info *info = v4l2_format_info(f->fmt.pix.pixelformat);
 
     mfmt->format.width        = f->fmt.pix.width;
     mfmt->format.height       = f->fmt.pix.height;
     mfmt->format.field        = f->fmt.pix.field;
-    mfmt->format.colorspace   = f->fmt.pix.colorspace;
-    mfmt->format.quantization = f->fmt.pix.quantization;
+
+    if (info->mem_planes != 1) {
+        mfmt->format.colorspace   = f->fmt.pix_mp.colorspace;
+        mfmt->format.quantization = f->fmt.pix_mp.quantization;
+    } else {
+        mfmt->format.colorspace   = f->fmt.pix.colorspace;
+        mfmt->format.quantization = f->fmt.pix.quantization;
+    }
 
     ret = vvcam_video_fourcc_to_mbus(f->fmt.pix.pixelformat, &mfmt->format.code);
 
     return ret;
-
 }
 
 static int vvcam_video_mfmt_to_vfmt( struct v4l2_subdev_format *mfmt, struct v4l2_format *f)
@@ -202,15 +211,28 @@ static int vvcam_video_mfmt_to_vfmt( struct v4l2_subdev_format *mfmt, struct v4l
         return 0;
     }
 
-    f->fmt.pix.bytesperline = bytesperline;
-    f->fmt.pix.sizeimage = sizeimage;
-    for (i = 1; i < info->comp_planes; i++) {
-        bytesperline = info->bpp[i] * DIV_ROUND_UP(width, info->hdiv);
-        sizeimage = bytesperline * DIV_ROUND_UP(height, info->vdiv);
+   if (info->mem_planes == 1) {
+        f->fmt.pix.bytesperline = bytesperline;
+        f->fmt.pix.sizeimage = sizeimage;
+        for (i = 1; i < info->comp_planes; i++) {
+            bytesperline = info->bpp[i] * DIV_ROUND_UP(width, info->hdiv);
+            sizeimage = bytesperline * DIV_ROUND_UP(height, info->vdiv);
+            f->fmt.pix.sizeimage += sizeimage;
+        }
+    } else {
+        f->fmt.pix_mp.plane_fmt[0].bytesperline = bytesperline;
+        f->fmt.pix_mp.plane_fmt[0].sizeimage = sizeimage;
+        f->fmt.pix_mp.num_planes = info->mem_planes;
+        for (i = 1; i < info->comp_planes; i++) {
+            bytesperline = info->bpp[i] * DIV_ROUND_UP(width, info->hdiv);
+            sizeimage = bytesperline * DIV_ROUND_UP(height, info->vdiv);
+            f->fmt.pix_mp.plane_fmt[i].bytesperline = bytesperline;
+            f->fmt.pix_mp.plane_fmt[i].sizeimage = sizeimage;
 
-        f->fmt.pix.sizeimage += sizeimage;
+        }
+        f->fmt.pix_mp.colorspace  = mfmt->format.colorspace;
+        f->fmt.pix_mp.quantization = mfmt->format.quantization;
     }
-
     return 0;
 }
 
@@ -224,8 +246,8 @@ static struct v4l2_subdev *vvcam_video_remote_subdev(struct vvcam_video_dev *vvc
 #else
     pad = media_entity_remote_pad(&vvcam_vdev->pad);
 #endif
-	if (!pad || !is_media_entity_v4l2_subdev(pad->entity))
-		return NULL;
+    if (!pad || !is_media_entity_v4l2_subdev(pad->entity))
+        return NULL;
 
     subdev = media_entity_to_v4l2_subdev(pad->entity);
 
@@ -340,9 +362,12 @@ static int vvcam_videoc_try_fmt_vid_cap(struct file *file, void *priv,
         .pads = &pad_cfg,
     };
     int ret;
-
+#ifdef DOLPHIN
+    if (f->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
+#else
     if (f->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
-		return -EINVAL;
+#endif
+        return -EINVAL;
 
     ret = vvcam_video_try_create_pipeline(vvcam_vdev);
     if (ret)
@@ -417,11 +442,14 @@ static int vvcam_videoc_g_fmt_vid_cap(struct file *file, void *fh,
                                 struct v4l2_format *f)
 {
     struct vvcam_video_dev *vvcam_vdev = video_drvdata(file);
-
     int ret;
 
+#ifdef DOLPHIN
+    if (f->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
+#else
     if (f->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
-		return -EINVAL;
+#endif
+        return -EINVAL;
 
     ret = vvcam_video_try_create_pipeline(vvcam_vdev);
     if (ret)
@@ -734,9 +762,15 @@ static int vvcam_videoc_subscribe_event(struct v4l2_fh *fh,
 static const struct v4l2_ioctl_ops vvcam_video_ioctl_ops = {
     .vidioc_querycap            = vvcam_videoc_querycap,
     .vidioc_enum_fmt_vid_cap    = vvcam_videoc_enum_fmt_vid_cap,
+#ifdef DOLPHIN
+    .vidioc_try_fmt_vid_cap_mplane = vvcam_videoc_try_fmt_vid_cap,
+    .vidioc_g_fmt_vid_cap_mplane   = vvcam_videoc_g_fmt_vid_cap,
+    .vidioc_s_fmt_vid_cap_mplane   = vvcam_videoc_s_fmt_vid_cap,
+#else
     .vidioc_try_fmt_vid_cap     = vvcam_videoc_try_fmt_vid_cap,
     .vidioc_g_fmt_vid_cap       = vvcam_videoc_g_fmt_vid_cap,
     .vidioc_s_fmt_vid_cap       = vvcam_videoc_s_fmt_vid_cap,
+#endif
 
     .vidioc_reqbufs             = vvcam_videoc_reqbufs,
     .vidioc_querybuf            = vb2_ioctl_querybuf,
@@ -833,6 +867,7 @@ static int vvcam_video_vb2_queue_setup(struct vb2_queue *queue,
                                     struct device *alloc_devs[])
 {
     struct vvcam_video_dev *vvcam_vdev = queue->drv_priv;
+    struct vvcam_media_dev *vvcam_mdev = vvcam_vdev->vvcam_mdev;
     struct v4l2_format *format = &vvcam_vdev->format;
     unsigned int i;
 
@@ -859,6 +894,10 @@ static int vvcam_video_vb2_queue_setup(struct vb2_queue *queue,
             for (i = 0; i < format->fmt.pix_mp.num_planes; i++) {
                 sizes[i] = format->fmt.pix_mp.plane_fmt[i].sizeimage;
             }
+#ifdef DOLPHIN
+            alloc_devs[0] = vvcam_mdev->alloc_dev[0];
+            alloc_devs[1] = vvcam_mdev->alloc_dev[0];
+#endif
         }
     } else {
         return -EINVAL;
@@ -893,8 +932,12 @@ static int vvcam_video_vb2_buf_prepare(struct vb2_buffer *vb)
         for (i = 0; i < format->fmt.pix_mp.num_planes; i++) {
             if (vb2_plane_size(vb, i) < format->fmt.pix_mp.plane_fmt[i].sizeimage)
                 return -EINVAL;
-
-            buf->planes[i].dma_addr = vb2_dma_contig_plane_dma_addr(vb, i);
+#ifdef DOLPHIN
+        buf->planes[i].dma_addr = (unsigned long) isp_dma_heap_get_phyaddr(
+                isp_dma_heap_plane_cookie(vb, i));
+#else
+        buf->planes[i].dma_addr = vb2_dma_contig_plane_dma_addr(vb, i);
+#endif
             buf->planes[i].size     = format->fmt.pix_mp.plane_fmt[i].sizeimage;
 
             vb2_set_plane_payload(vb, i, buf->planes[i].size);
@@ -1000,10 +1043,19 @@ static int vvcam_video_queue_init(struct vvcam_video_dev *vvcam_vdev)
     struct vb2_queue *queue;
 
     queue = &vvcam_vdev->queue;
+#ifdef DOLPHIN
+    queue->type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+#else
     queue->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+#endif
     queue->io_modes = VB2_MMAP | VB2_USERPTR | VB2_DMABUF;
     queue->drv_priv = vvcam_vdev;
     queue->ops = &vvcam_video_queue_ops;
+#ifdef DOLPHIN
+    queue->mem_ops = &isp_dma_contig_memops;
+#else
+    queue->mem_ops = &vb2_dma_contig_memops;
+#endif
     queue->mem_ops = &vb2_dma_contig_memops;
     queue->buf_struct_size = sizeof(struct vvcam_vb2_buffer);
 	queue->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
@@ -1062,7 +1114,11 @@ int vvcam_video_register(struct vvcam_media_dev *vvcam_mdev, int port)
     vvcam_vdev->video->release       = video_device_release_empty;
     vvcam_vdev->video->v4l2_dev      = &vvcam_mdev->v4l2_dev;
     //vvcam_vdev->video->lock          = &vvcam_vdev->video_lock;
+#ifdef DOLPHIN
+    vvcam_vdev->video->device_caps   = V4L2_CAP_VIDEO_CAPTURE_MPLANE |
+#else
     vvcam_vdev->video->device_caps   = V4L2_CAP_VIDEO_CAPTURE |
+#endif
                                        V4L2_CAP_STREAMING;
     vvcam_vdev->video->minor         = -1;
 

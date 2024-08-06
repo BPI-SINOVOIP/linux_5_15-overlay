@@ -77,6 +77,7 @@
 
 #define VVCAM_VIDEO_NAME "vvcam-video"
 #define VVCAM_VIDEO_PORT_MAX 64
+#define MAX_MEMORY_DEVICE       2
 
 #define VVCAM_VIDEO_WIDTH_ALIGN  16
 #define VVCAM_VIDEO_HEIGHT_ALIGN  8
@@ -116,6 +117,9 @@ struct vvcam_media_dev {
 	int ports;
 	struct vvcam_video_params video_params[VVCAM_VIDEO_PORT_MAX];
 	struct vvcam_video_dev *video_devs[VVCAM_VIDEO_PORT_MAX];
+#ifdef DOLPHIN
+	struct device               *alloc_dev[MAX_MEMORY_DEVICE];
+#endif
 #ifdef VVCAM_SUBDEV_PLATFORM_REGISTER
 	struct vvcam_v4l2_link *pipeline_link;
 	uint32_t pipeline_link_size;

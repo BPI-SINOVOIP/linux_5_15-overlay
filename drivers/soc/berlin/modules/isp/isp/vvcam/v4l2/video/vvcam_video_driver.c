@@ -74,6 +74,9 @@
 #include "vvcam_video_platform.h"
 #include "vvcam_pipeline_link.h"
 #endif
+#ifdef DOLPHIN
+#include "isp_dma_heap.h"
+#endif
 
 static int vvcam_video_register_ports(struct vvcam_media_dev *vvcam_mdev)
 {
@@ -466,12 +469,23 @@ static int vvcam_video_probe(struct platform_device *pdev)
 	media_device_init(mdev);
 
     vvcam_mdev->v4l2_dev.mdev = mdev;
+#ifdef DOLPHIN
+	/* Create alloc device for creating DMA memory */
+	ret = isp_dma_heap_dev_alloc((vvcam_mdev->alloc_dev));
+	if (ret) {
+		pr_err("%s(): failed to create allocate evice\n", __func__);
+		return ret;
+	}
+#endif
     ret = v4l2_device_register(dev, &vvcam_mdev->v4l2_dev);
 	if (ret) {
 		dev_err(dev, "register v4l2 device error\n");
+#ifdef DOLPHIN
+		goto err_release_dma_heap;
+#else
 		return ret;
+#endif
 	}
-
     ret = vvcam_video_register_ports(vvcam_mdev);
     if (ret) {
 		dev_err(dev, "register video device nodes error\n");
@@ -498,7 +512,10 @@ err_unregister_video_ports:
     vvcam_video_unregister_ports(vvcam_mdev);
 err_unregister_v4l2_device:
     v4l2_device_unregister(&vvcam_mdev->v4l2_dev);
-
+#ifdef DOLPHIN
+err_release_dma_heap:
+	isp_dma_heap_dev_release();
+#endif
     return ret;
 }
 
