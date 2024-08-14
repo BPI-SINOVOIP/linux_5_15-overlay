@@ -106,6 +106,15 @@ static const struct m2m_scaler_fmt *m2m_scaler_find_fmt(u32 pixelformat)
 	return NULL;
 }
 
+static struct frame_info *ctx_get_selection_frame(struct m2m_scaler_ctx *ctx,
+		enum v4l2_buf_type type)
+{
+	if (type == V4L2_BUF_TYPE_VIDEO_OUTPUT)
+		return &ctx->src;
+	else
+		return ERR_PTR(-EINVAL);
+}
+
 static struct frame_info *ctx_get_frame(struct m2m_scaler_ctx *ctx,
 		enum v4l2_buf_type type)
 {
@@ -115,7 +124,7 @@ static struct frame_info *ctx_get_frame(struct m2m_scaler_ctx *ctx,
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
 		return &ctx->dst;
 	default:
-		dev_err(ctx->m2m_scaler_dev->dev,
+		dev_dbg(ctx->m2m_scaler_dev->dev,
 				"Wrong buffer/video queue type (%d)\n", type);
 		break;
 	}
@@ -995,6 +1004,145 @@ static int m2m_scaler_ioctl_qbuf(struct file *file, void *priv,
 	return v4l2_m2m_qbuf(file, fh->m2m_ctx, buf);
 }
 
+static int is_rect_enclosed(struct v4l2_rect *a, struct v4l2_rect *b)
+{
+	/* Return 1 if a is enclosed in b, or 0 otherwise. */
+	if (a->left < b->left || a->top < b->top)
+		return 0;
+
+	if (a->left + a->width > b->left + b->width)
+		return 0;
+
+	if (a->top + a->height > b->top + b->height)
+		return 0;
+
+	return 1;
+}
+
+static int m2m_scaler_g_selection(struct file *file, void *fh,
+		struct v4l2_selection *s)
+{
+	struct frame_info *frame = NULL;
+	struct m2m_scaler_ctx *ctx = fh_to_ctx(fh);
+
+	frame = ctx_get_selection_frame(ctx, s->type);
+	if (IS_ERR(frame)) {
+		dev_dbg(ctx->m2m_scaler_dev->dev, "Invalid frame\n");
+		return PTR_ERR(frame);
+	}
+
+	switch (s->type) {
+	case V4L2_BUF_TYPE_VIDEO_OUTPUT:
+	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
+		switch (s->target) {
+		case V4L2_SEL_TGT_CROP:
+			/* cropped (composed) frame */
+			s->r = frame->crop;
+			break;
+		case V4L2_SEL_TGT_CROP_DEFAULT:
+			/* complete frame */
+			s->r.left = 0;
+			s->r.top = 0;
+			s->r.width = frame->width;
+			s->r.height = frame->height;
+			break;
+		default:
+			dev_dbg(ctx->m2m_scaler_dev->dev,
+					"Output Invalid target: 0x%X\n", s->target);
+			return -EINVAL;
+		}
+		break;
+	default:
+		dev_dbg(ctx->m2m_scaler_dev->dev, "Invalid type: %d\n", s->type);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int m2m_scaler_s_selection(struct file *file, void *fh,
+		struct v4l2_selection *s)
+{
+	struct frame_info *frame = NULL;
+	struct m2m_scaler_ctx *ctx = fh_to_ctx(fh);
+	struct v4l2_rect *in, out;
+
+	bool valid = false;
+
+	if (((s->type == V4L2_BUF_TYPE_VIDEO_OUTPUT) ||
+				(s->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)) &&
+			(s->target == V4L2_SEL_TGT_CROP))
+		valid = true;
+
+	if (!valid) {
+		dev_dbg(ctx->m2m_scaler_dev->dev,
+				"Invalid type: %d / target: 0x%x\n", s->type, s->target);
+		return -EINVAL;
+	}
+
+	frame = ctx_get_selection_frame(ctx, s->type);
+	if (IS_ERR(frame)) {
+		dev_dbg(ctx->m2m_scaler_dev->dev, "Invalid frame\n");
+		return PTR_ERR(frame);
+	}
+
+	in = &s->r;
+	out = *in;
+
+	/* Align and check origin */
+	out.left = ALIGN(in->left, MTR_ACTIVE_HEIGHT_ALIGNMENT);
+	out.top = ALIGN(in->top, MTR_ACTIVE_HEIGHT_ALIGNMENT);
+
+	if ((out.left < 0) || (out.left >= frame->width) ||
+			(out.top < 0) || (out.top >= frame->height)) {
+		dev_err(ctx->m2m_scaler_dev->dev,
+				"Invalid crop: %dx%d@(%d,%d) vs frame: %dx%d\n",
+				out.width, out.height, out.left, out.top,
+				frame->width, frame->height);
+		return -EINVAL;
+	}
+
+	/* Align and check size */
+	if (ctx->io_mmu_buffer_output)
+		out.width = ALIGN(in->width, MTR_ACTIVE_WIDTH_ALIGNMENT);
+	else
+		out.width = ALIGN(in->width, MTR_ACTIVE_HEIGHT_ALIGNMENT);
+	out.height = ALIGN(in->height, MTR_ACTIVE_HEIGHT_ALIGNMENT);
+
+	if (((out.left + out.width) > frame->width) ||
+			((out.top + out.height) > frame->height)) {
+		dev_err(ctx->m2m_scaler_dev->dev,
+				"Invalid crop: %dx%d@(%d,%d) vs frame: %dx%d\n",
+				out.width, out.height, out.left, out.top,
+				frame->width, frame->height);
+		return -EINVAL;
+	}
+
+	/* Checks adjust constraints flags */
+	if (s->flags & V4L2_SEL_FLAG_LE && !is_rect_enclosed(&out, in))
+		return -ERANGE;
+
+	if (s->flags & V4L2_SEL_FLAG_GE && !is_rect_enclosed(in, &out))
+		return -ERANGE;
+
+	if ((out.left != in->left) || (out.top != in->top) ||
+			(out.width != in->width) || (out.height != in->height)) {
+		dev_info(ctx->m2m_scaler_dev->dev,
+				"%s crop updated: %dx%d@(%d,%d) -> %dx%d@(%d,%d)\n",
+				__func__, in->width, in->height, in->left, in->top,
+				out.width, out.height, out.left, out.top);
+		*in = out;
+	}
+
+	dev_info(ctx->m2m_scaler_dev->dev,
+			"crop: %dx%d@(%d,%d) vs frame: %dx%d\n",
+			out.width, out.height, out.left, out.top,
+			frame->width, frame->height);
+
+	frame->crop = out;
+	return 0;
+}
+
 static const struct v4l2_ioctl_ops scaler_ioctl_ops = {
 	.vidioc_querycap                = m2m_scaler_querycap,
 	.vidioc_enum_fmt_vid_cap        = m2m_scaler_enum_fmt,
@@ -1005,6 +1153,8 @@ static const struct v4l2_ioctl_ops scaler_ioctl_ops = {
 	.vidioc_try_fmt_vid_cap_mplane	= m2m_scaler_try_fmt_cap_mp,
 	.vidioc_s_fmt_vid_out_mplane	= m2m_scaler_s_fmt_out_mp,
 	.vidioc_s_fmt_vid_cap_mplane    = m2m_scaler_s_fmt_cap_mp,
+	.vidioc_g_selection             = m2m_scaler_g_selection,
+	.vidioc_s_selection             = m2m_scaler_s_selection,
 	.vidioc_reqbufs                 = v4l2_m2m_ioctl_reqbufs,
 	.vidioc_create_bufs             = v4l2_m2m_ioctl_create_bufs,
 	.vidioc_expbuf                  = v4l2_m2m_ioctl_expbuf,
