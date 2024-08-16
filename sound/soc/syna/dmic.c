@@ -137,6 +137,9 @@ static int dmic_gain_control_put(struct snd_kcontrol *kcontrol,
 		(struct soc_mixer_control *)kcontrol->private_value;
 	int ch = mc->reg;
 
+	if (ch >= MAX_CHANNELS)
+		return -EINVAL;
+
 	dmic->gain[ch] = ucontrol->value.enumerated.item[0];
 
 	if ((ch % 2) == 0)
