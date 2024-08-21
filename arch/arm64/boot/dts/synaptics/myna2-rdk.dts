@@ -148,6 +148,28 @@
 			output-low;
 		};
 	};
+
+	ina3221@40{
+		compatible = "ti,ina3221";
+		reg = <0x40>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		input@0 {
+			reg = <0x0>;
+			label = "VCORE";
+		};
+
+		input@1 {
+			reg = <0x1>;
+			label = "1V2";
+		};
+
+		input@2 {
+			reg = <0x2>;
+			label = "2V5";
+		};
+	};
 };
 
 &i2c1 {
@@ -181,6 +203,16 @@
 			gpios = <0 GPIO_ACTIVE_HIGH>;
 			output-high;
 		};
+	};
+
+	ina220@40 {
+		compatible = "ti,ina220";
+		reg = <0x40>;
+	};
+
+	ina220@41 {
+		compatible = "ti,ina220";
+		reg = <0x41>;
 	};
 };
 
