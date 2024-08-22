@@ -725,17 +725,13 @@ static int vidioc_vdec_s_fmt_out(struct file *file, void *priv,
 	return 0;
 }
 
-static bool vdec_fmt_from_cur_seq_fmt(struct syna_vcodec_ctx *ctx,
+static void vdec_fmt_from_cur_seq_fmt(struct syna_vcodec_ctx *ctx,
 				     struct syna_vpu_ctrl *ctrl,
 				     struct v4l2_pix_format_mplane *pix_mp)
 {
 	const struct v4g_fmt *fmt;
 	uint32_t bytesperline, sizeimage;
 	uint32_t codec;
-
-	if (0 == memcmp(&ctx->seq_desc, &ctrl->seq_desc, sizeof(ctrl->seq_desc))) {
-		return false;
-	}
 
 	pix_mp->width = ctrl->seq_desc.width;
 	pix_mp->height = ctrl->seq_desc.height;
@@ -845,7 +841,8 @@ static bool vdec_fmt_from_cur_seq_fmt(struct syna_vcodec_ctx *ctx,
 		ctrl->seq_desc.max_ref_nums, ctx->req_dpb_size);
 
 	ctx->seq_desc = ctrl->seq_desc;
-	return true;
+
+	return;
 }
 
 static int vdpu_update_dst_fmt(struct syna_vcodec_ctx *ctx,
@@ -2137,6 +2134,7 @@ static int syna_vdec_update_pop_status(struct syna_vcodec_ctx *ctx)
 		}
 	}
 
+	mark_last_buf = false;
 	for (i = 0; i < ctrl->dbuf.pop; i++) {
 		idx = idx_queue_pop(&ctrl->dbuf, i);
 		if (idx > VB2_MAX_FRAME) {
@@ -2161,7 +2159,6 @@ static int syna_vdec_update_pop_status(struct syna_vcodec_ctx *ctx)
 
 		vpu_buf += dst_vb->index;
 
-		mark_last_buf = false;
 		if ((i == (ctrl->dbuf.pop - 1))
 		    && (ctx->cap_resetup || ctx->eos))
 			WRITE_ONCE(mark_last_buf, true);
@@ -2262,7 +2259,6 @@ static void syna_vdec_v4g_worker(struct work_struct *work)
 	struct vb2_queue *dst_vq;
 	u64 timestamp;
 	bool switchpoint = false;
-	bool fmt_change = false;
 	int ret;
 
 	ctx = v4l2_m2m_get_curr_priv(m2m_dev);
@@ -2383,21 +2379,20 @@ decoding:
 	 */
 
 	if (ctrl->status.flags & BERLIN_VPU_STATUS_NEW_SEQUENCE) {
-		fmt_change = vdec_fmt_from_cur_seq_fmt(ctx, ctrl, &ctx->ref_fmt);
-		if (fmt_change) {
-			v4l2_m2m_set_dst_buffered(m2m_ctx, false);
-			set_bit(SYNA_VPU_STATUS_WAIT_NEW_RES_SETUP, &ctx->status);
-			/**
-			 * after STREAM_ON in capture clear the flag above, we need
-			 * to wait display is ready.
-			 */
-			set_bit(SYNA_VPU_STATUS_WAIT_DISP_BUF, &ctx->status);
-			dst_vq = v4l2_m2m_get_dst_vq(m2m_ctx);
-			if (vb2_start_streaming_called(dst_vq))
-				ctx->cap_resetup = true;
+		v4l2_m2m_set_dst_buffered(m2m_ctx, false);
+		set_bit(SYNA_VPU_STATUS_WAIT_NEW_RES_SETUP, &ctx->status);
 
-			syna_vdec_event_new_res(ctx);
-		}
+		/**
+		 * after STREAM_ON in capture clear the flag above, we need
+		 * to wait display is ready.
+		 */
+		set_bit(SYNA_VPU_STATUS_WAIT_DISP_BUF, &ctx->status);
+		dst_vq = v4l2_m2m_get_dst_vq(m2m_ctx);
+		if (vb2_start_streaming_called(dst_vq))
+			ctx->cap_resetup = true;
+
+		vdec_fmt_from_cur_seq_fmt(ctx, ctrl, &ctx->ref_fmt);
+		syna_vdec_event_new_res(ctx);
 	}
 
 	ret = syna_vdec_update_pop_status(ctx);
