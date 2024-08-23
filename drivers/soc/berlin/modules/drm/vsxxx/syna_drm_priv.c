@@ -91,6 +91,10 @@ int syna_modeset_createEntries(struct syna_drm_private *dev_priv)
 #endif
 
 	for (plane_id = FIRST_PLANE; plane_id < MAX_NUM_PLANES; plane_id++) {
+#ifdef USE_PLATYPUS
+		if (plane_id == PLANE_PIP)
+			continue;
+#endif
 		plane_type = syna_modeset_getPlaneType(dev_priv, plane_id);
 		dev_priv->plane[plane_id] = syna_plane_create(dev,
 				(plane_id != PLANE_PIP) ? plane_possible_crtc_mask : \
