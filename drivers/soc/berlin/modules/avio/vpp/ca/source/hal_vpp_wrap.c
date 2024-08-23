@@ -238,6 +238,17 @@ int wrap_MV_VPPOBJ_SetRefWindow(int planeID, VPP_WIN *win)
 	return retVal;
 }
 
+int wrap_MV_VPPOBJ_SetRefWindowFromISR(int planeID, VPP_WIN *win)
+{
+	DHUB_CTX *hDhubCtx = (DHUB_CTX *) avio_sub_module_get_ctx(AVIO_MODULE_TYPE_DHUB);
+	int retVal = 0;
+
+	if (hDhubCtx->isTeeEnabled)
+		retVal = TZ_MV_VPPOBJ_SetRefWindowFromISR(planeID, win);
+
+	return retVal;
+}
+
 int wrap_MV_VPPOBJ_ChangeDispWindow(int planeID, VPP_WIN *win, VPP_WIN_ATTR *attr)
 {
 	DHUB_CTX *hDhubCtx = (DHUB_CTX *) avio_sub_module_get_ctx(AVIO_MODULE_TYPE_DHUB);
@@ -567,6 +578,7 @@ EXPORT_SYMBOL(wrap_MV_VPPOBJ_OpenDispWindow);
 EXPORT_SYMBOL(wrap_MV_VPPOBJ_SetDisplayMode);
 EXPORT_SYMBOL(wrap_MV_VPPOBJ_DisplayFrame);
 EXPORT_SYMBOL(wrap_MV_VPPOBJ_SetRefWindow);
+EXPORT_SYMBOL(wrap_MV_VPPOBJ_SetRefWindowFromISR);
 EXPORT_SYMBOL(wrap_MV_VPPOBJ_ChangeDispWindow);
 EXPORT_SYMBOL(wrap_MV_VPPOBJ_SetPlaneMute);
 EXPORT_SYMBOL(wrap_MV_VPPOBJ_ChangeZOrder);

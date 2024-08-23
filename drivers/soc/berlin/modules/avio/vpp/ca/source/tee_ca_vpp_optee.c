@@ -795,6 +795,38 @@ int VPP_CA_SetRefWin(int PlaneId, int WinX, int WinY, int WinW, int WinH)
 	return ret;
 }
 
+int VPP_CA_SetRefWinFromISR(int PlaneId, int WinX, int WinY, int WinW, int WinH)
+{
+	int ret;
+	struct tee_param param[4];
+	int index;
+	u32 *pSession;
+
+	index = VPP_CA_GetInstanceID();
+	pSession = &(TAVPPInstance[index].session);
+
+	memset(param, 0, sizeof(param));
+	param[0].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
+	param[1].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
+	param[2].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INPUT;
+	param[3].attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_OUTPUT;
+
+	param[0].u.value.a = PlaneId;
+	param[0].u.value.b = WinX;
+	param[1].u.value.a = WinY;
+	param[1].u.value.b = WinW;
+	param[2].u.value.a = WinH;
+	/* clear result */
+	param[3].u.value.a = 0xdeadbeef;
+
+	ret = InvokeCommandHelper(index, pSession, VPP_SETREFWINFROMISR, param, 4);
+	if (!ret) {
+		ret = param[3].u.value.a;
+	}
+
+	return ret;
+}
+
 int VPP_CA_ChangeDispWin(int PlaneId, int WinX, int WinY, int WinW, int WinH, int BgClr, int Alpha, ENUM_GLOBAL_ALPHA_FLAG globalAlphaFlag)
 {
 	int ret;

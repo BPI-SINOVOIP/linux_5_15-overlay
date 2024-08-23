@@ -18,6 +18,8 @@ typedef struct {
 	unsigned int m_Param1;
 	/*Message 2nd Parameter*/
 	unsigned int m_Param2;
+	/*Mesaage 3rd paramter a pointer */
+	void* pvParam;
 } MV_CC_MSG_t, *pMV_CC_MSG_t;
 
 #ifndef E_SUC

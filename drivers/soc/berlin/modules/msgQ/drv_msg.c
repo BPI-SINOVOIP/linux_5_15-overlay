@@ -38,6 +38,7 @@ EXPORT_SYMBOL(AMPMsgQ_Add);
 int AMPMsgQ_ReadTry(AMPMsgQ_t * pMsgQ, MV_CC_MSG_t * pMsg)
 {
 	int rd_offset;
+	int result = S_FALSE;
 
 	if (NULL == pMsgQ->pMsg || pMsg == NULL)
 		return S_FALSE;
@@ -47,12 +48,10 @@ int AMPMsgQ_ReadTry(AMPMsgQ_t * pMsgQ, MV_CC_MSG_t * pMsg)
 	if (rd_offset != 0) {
 		memcpy((char *) pMsg, (char *) & pMsgQ->pMsg[pMsgQ->rd_number],
 		       sizeof(MV_CC_MSG_t));
-		return S_OK;
-	} else {
-		printk("read message queue failed r: %d w: %d\n",
-			  pMsgQ->rd_number, pMsgQ->wr_number);
-		return S_FALSE;
+		result = S_OK;
 	}
+
+	return result;
 }
 EXPORT_SYMBOL(AMPMsgQ_ReadTry);
 

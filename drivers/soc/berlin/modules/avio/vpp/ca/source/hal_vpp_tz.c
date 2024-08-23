@@ -298,6 +298,29 @@ int TZ_MV_VPPOBJ_SetRefWindow(int planeID, VPP_WIN *win)
 	return Ret;
 }
 
+/***************************************************************
+ * FUNCTION: set the reference window for a plane in ISR context
+ * INPUT: planeID - id of the plane
+ *        *win - pointer to the reference window struct
+ * RETURN: MV_VPP_OK - SUCCEED
+ *         MV_EBADPARAM - invalid parameters
+ *         MV_EUNCONFIG - VPP not configured
+ *         MV_EUNSUPPORT - plane not connected in configuration
+ *         MV_ECMDQFULL - command queue is full
+ **************************************************************/
+int TZ_MV_VPPOBJ_SetRefWindowFromISR(int planeID, VPP_WIN *win)
+{
+	HRESULT Ret = MV_VPP_OK;
+
+	Ret = VPP_CA_SetRefWinFromISR(planeID,
+			win->x,
+			win->y,
+			win->width,
+			win->height);
+
+	return Ret;
+}
+
 /******************************************************************************
  * FUNCTION: change a window of a video/graphics plane.
  *           the window is defined in end display resolution

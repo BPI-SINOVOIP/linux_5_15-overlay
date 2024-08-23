@@ -90,7 +90,6 @@ VPP_MEM vpp_disp_info_shm_handle[MAX_NUM_PLANES][MAX_VBUF_INFO];
 static VBUF_INFO vpp_disp_desc_array[MAX_NUM_PLANES][MAX_VBUF_INFO];
 static int vbuf_info_num[MAX_NUM_PLANES] = {0};
 static int init_vbuf_info;
-static VPP_WIN curr_fb_win[MAX_NUM_PLANES];
 
 static VPP_MEM_LIST *shm_list;
 VPP_MEM vpp_dsi_info_shm_handle;
@@ -336,7 +335,6 @@ static void syna_vpp_init(struct drm_device *dev)
 
 			DRM_DEBUG_DRIVER("Init vpp_disp_info_phys_addr[%d][%d]=%lx\n",
 					 plane, i, (phys_addr_t)shm_handle->p_addr);
-			MV_VPP_SetInputFrameSize(plane, 720, 480);
 		}
 	}
 
@@ -544,7 +542,6 @@ void syna_vpp_set_surface(struct drm_device *dev, void __iomem *syna_reg,
 	void *kernel_vir_src_addr = NULL;
 #ifndef CONFIG_SYNA_DRM_DISABLE_ROTATION
 	u32 rot_plane_ndx = 0;
-	VPP_WIN fb_win;
 	void *kernel_vir_dst_addr = NULL;
 #endif
 	int VPP_video_format = 0;
@@ -788,24 +785,8 @@ void syna_vpp_set_surface(struct drm_device *dev, void __iomem *syna_reg,
 			("[DRM] device rotate is change!! pre:%d update:%ld\n",
 			 in_use_device_rotate[plane], device_rotate);
 		in_use_device_rotate[plane] = device_rotate;
-		fb_win.x = 0;
-		fb_win.y = 0;
-		fb_win.width = width;
-		fb_win.height = height;
-		wrap_MV_VPPOBJ_SetRefWindow(plane, &fb_win);
 	}
 #endif
-
-	if (curr_fb_win[plane].width != width ||
-		curr_fb_win[plane].height != height) {
-		curr_fb_win[plane].x = 0;
-		curr_fb_win[plane].y = 0;
-		curr_fb_win[plane].width = width;
-		curr_fb_win[plane].height = height;
-		wrap_MV_VPPOBJ_SetRefWindow(plane, &curr_fb_win[plane]);
-	}
-
-	MV_VPP_SetInputFrameSize(plane, width, height);
 
 	MV_VPP_DisplayFrame(plane, VPP_video_format, (void *)curr_disp_desc);
 
@@ -857,10 +838,7 @@ void syna_vpp_push_buildin_frame(u32 plane)
 				   bframe_info->format_type, 0, 0,
 				   width, height, (ARCH_PTR_TYPE)disp_phyaddr, (phys_addr_t)0);
 
-	MV_VPP_SetInputFrameSize(plane, width, height);
-
 	MV_VPP_DisplayFrame(plane, VPP_video_format, (void *)curr_disp_desc);
-
 	vbuf_info_num[plane] = (vbuf_info_num[plane] + 1) % MAX_VBUF_INFO;
 }
 

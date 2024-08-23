@@ -336,7 +336,7 @@ void MV_VPP_FB_ConfigParams(vpp_config_params *param)
 	maxFrameSizeNdx = ARRAY_SIZE(frameSize);
 	vpp_config_param.frame_size_ndx = vpp_config_param.frame_size_ndx >= maxFrameSizeNdx ? 0 : vpp_config_param.frame_size_ndx;
 	MV_VPP_SetInputFrameSize(uiPlaneId, frameSize[vpp_config_param.frame_size_ndx].width,
-							frameSize[vpp_config_param.frame_size_ndx].height);
+							frameSize[vpp_config_param.frame_size_ndx].height, 0, 0);
 }
 EXPORT_SYMBOL(MV_VPP_FB_ConfigParams);
 
@@ -373,12 +373,3 @@ void MV_VPP_FB_GetInputFrameSize(int *width, int *height)
 	MV_VPP_GetInputFrameSize(uiPlaneId, width, height);
 }
 EXPORT_SYMBOL(MV_VPP_FB_GetInputFrameSize);
-
-int MV_VPP_FB_Config(void)
-{
-	ENUM_PLANE_ID uiPlaneId = PLANE_GFX1;
-	ENUM_CPCB_ID cpcbID = CPCB_1;
-
-	return MV_VPP_Config(cpcbID, uiPlaneId, 0);
-}
-EXPORT_SYMBOL(MV_VPP_FB_Config);

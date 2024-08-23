@@ -14,6 +14,5 @@ void MV_VPP_FB_ConfigParams(vpp_config_params* param);
 void MV_VPP_FB_DisplayFrame(VPP_MEM *shm_handle, int x,
 			int y, int w, int h, int stride);
 void MV_VPP_FB_GetInputFrameSize(int *width, int *height);
-int MV_VPP_FB_Config(void);
 
 #endif //_VPP_FB_H_

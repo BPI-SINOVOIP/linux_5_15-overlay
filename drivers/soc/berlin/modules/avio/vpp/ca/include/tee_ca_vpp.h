@@ -48,6 +48,7 @@ int VPP_CA_ObjConfig(const int *pvinport_cfg, const int *pdv_cfg,
 		const int *pzorder_cfg, const int *pvoutport_cfg, const int *pfeature_cfg);
 int VPP_CA_SetOutRes(int CpcbId, int ResId, int BitDepth);
 int VPP_CA_SetRefWin(int PlaneId, int WinX, int WinY, int WinW, int WinH);
+int VPP_CA_SetRefWinFromISR(int PlaneId, int WinX, int WinY, int WinW, int WinH);
 int VPP_CA_OpenDispWin(int PlaneId, int WinX, int WinY, int WinW, int WinH, int BgClr, int Alpha);
 int VPP_CA_ChangeDispWin(int PlaneId, int WinX, int WinY, int WinW, int WinH,
 						 int BgClr, int Alpha, ENUM_GLOBAL_ALPHA_FLAG globalAlphaFlag);

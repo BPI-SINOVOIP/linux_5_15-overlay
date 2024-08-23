@@ -922,6 +922,41 @@ int VPP_CA_SetRefWin(int PlaneId, int WinX, int WinY, int WinW, int WinH)
 	return operation.params[3].value.a;
 }
 
+int VPP_CA_SetRefWinFromISR(int PlaneId, int WinX, int WinY, int WinW, int WinH)
+{
+	int index;
+	TEEC_Session *pSession;
+	TEEC_Result result;
+	TEEC_Operation operation;
+
+	index = VPP_CA_GetInstanceID();
+	pSession = &(TAVPPInstance[index].session);
+	operation.paramTypes = TEEC_PARAM_TYPES(
+			TEEC_VALUE_INPUT,
+			TEEC_VALUE_INPUT,
+			TEEC_VALUE_INPUT,
+			TEEC_VALUE_OUTPUT);
+
+	operation.params[0].value.a = PlaneId;
+	operation.params[0].value.b = WinX;
+	operation.params[1].value.a = WinY;
+	operation.params[1].value.b = WinW;
+	operation.params[2].value.a = WinH;
+
+	/* clear result */
+	operation.params[3].value.a = 0xdeadbeef;
+
+	operation.started = 1;
+	result = InvokeCommandHelper(index,
+			pSession,
+			VPP_SETREFWINFROMISR,
+			&operation,
+			NULL);
+	VPP_TEEC_LOGIFERROR(result);
+
+	return operation.params[3].value.a;
+}
+
 int VPP_CA_ChangeDispWin(int PlaneId, int WinX, int WinY, int WinW, int WinH, int BgClr, int Alpha, ENUM_GLOBAL_ALPHA_FLAG globalAlphaFlag)
 {
 	int index;

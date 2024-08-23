@@ -31,6 +31,9 @@
 #define HDMI_MAX_RES_ENABLED_60_30  61
 #define HDMI_MAX_RES_ENABLED_50_25  59
 
+#define VPP_FRAMEQ_MSGT_DISPLAY_FRAME	0x0
+#define VPP_FRAMEQ_MSGT_STILL_PICTURE	0x1
+
 /*Enable the macro when planes other than GFX is used for display with fastlogo.ta*/
 //#define VPP_ENABLE_USE_SET_STILL_PICTURE
 
@@ -49,7 +52,7 @@ int MV_VPP_Init(VPP_MEM_LIST *shm_list, vpp_config_params vpp_config_param);
 void MV_VPP_Deinit(void);
 void MV_VPP_DisplayFrame(int uiPlaneId, int isVideoFormat, VBUF_INFO *pVppDesc);
 void MV_VPP_GetInputFrameSize(ENUM_PLANE_ID plane_id, int *width, int *height);
-void MV_VPP_SetInputFrameSize(ENUM_PLANE_ID plane_id, int width, int height);
+int MV_VPP_SetInputFrameSize(ENUM_PLANE_ID plane_id, int width, int height, bool isFromISR, bool bApply);
 int MV_VPP_SetDisplayResolution(ENUM_CPCB_ID cpcbID,
 		VPP_DISP_OUT_PARAMS dispParams, int bApply);
 void MV_VPP_GetOutResolutionSize(ENUM_CPCB_ID cpcbID, int *p_width, int *p_height);

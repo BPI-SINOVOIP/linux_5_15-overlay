@@ -101,22 +101,38 @@ void MV_VPP_GetInputFrameSize(ENUM_PLANE_ID plane_id, int *width, int *height)
 		swap(*width, *height);
 }
 
-void MV_VPP_SetInputFrameSize(ENUM_PLANE_ID plane_id, int width, int height)
+int MV_VPP_SetInputFrameSize(ENUM_PLANE_ID plane_id, int width, int height, bool isFromISR, bool bApply)
 {
+	int ret = 0;
 	VPP_WIN fb_win;
+
+	/* For NULL Frame no need to Update the window */
+	if (!width || !height)
+		return 0;
 
 	if (curr_input_frame_size[plane_id].width != width ||
 	        curr_input_frame_size[plane_id].height != height) {
+
+		if (bApply) {
+			if (isFromISR) {
+				fb_win.x = 0;
+				fb_win.y = 0;
+				fb_win.width = width;
+				fb_win.height = height;
+
+				ret = wrap_MV_VPPOBJ_SetRefWindowFromISR(plane_id, &fb_win);
+				if (ret) {
+					pr_err("Failed to set ref window from ISR %d\n",
+							plane_id);
+					return ret;
+				}
+			}
+		}
+
 		curr_input_frame_size[plane_id].width = width;
 		curr_input_frame_size[plane_id].height = height;
-
-		//Apply the change in frame size to reference window
-		fb_win.x = 0;
-		fb_win.y = 0;
-		fb_win.width  = width;
-		fb_win.height = height;
-		wrap_MV_VPPOBJ_SetRefWindow(plane_id, &fb_win);
 	}
+	return ret;
 }
 
 int MV_VPP_GetDispOutParams(int cpcbId, VPP_DISP_OUT_PARAMS* pDisplayOutParams)
@@ -210,11 +226,13 @@ void MV_VPP_DisplayFrame(int uiPlaneId, int isVideoFormat, VBUF_INFO *pVppDesc)
 		else
 			wrap_MV_VPPOBJ_SetStillPicture(uiPlaneId, pVppDesc);
 	} else {
-	#ifndef VPP_ENABLE_USE_SET_STILL_PICTURE
-		wrap_MV_VPPOBJ_DisplayFrame(uiPlaneId, pVppDesc);
-	#else
-		wrap_MV_VPPOBJ_SetStillPicture(uiPlaneId, pVppDesc);
-	#endif
+#ifndef VPP_ENABLE_USE_SET_STILL_PICTURE
+		VPP_PushFrameToInputQueue(uiPlaneId,
+			VPP_FRAMEQ_MSGT_DISPLAY_FRAME, pVppDesc);
+#else
+		VPP_PushFrameToInputQueue(uiPlaneId,
+			VPP_FRAMEQ_MSGT_STILL_PICTURE, pVppDesc);
+#endif
 	}
 }
 
@@ -317,48 +335,6 @@ void MV_VPP_Deinit(void)
 	wrap_MV_VPP_DeInit();
 }
 
-int MV_VPP_Config(ENUM_CPCB_ID cpcbID, ENUM_PLANE_ID plane_id, bool isVideo) {
-	int ret;
-	VPP_WIN fb_win;
-	VPP_WIN disp_win;
-	VPP_WIN_ATTR attr;
-
-	fb_win.x = 0;
-	fb_win.y = 0;
-
-	if (isVideo) {
-		attr.alpha = 0xfff;
-		attr.bgcolor = 0x0;
-		attr.globalAlphaFlag = 0x0;
-	} else {
-		attr.alpha = 0x800;
-		attr.bgcolor = 0xe00080;
-		attr.globalAlphaFlag = 0x0;
-	}
-
-	MV_VPP_GetInputFrameSize(plane_id, &fb_win.width, &fb_win.height);
-
-	disp_win.x = 0;
-	disp_win.y = 0;
-	MV_VPP_GetOutResolutionSize(CPCB_1, &disp_win.width, &disp_win.height);
-
-	ret = wrap_MV_VPPOBJ_SetRefWindow(plane_id, &fb_win);
-	if (ret) {
-		pr_err("%s:%d: SetRefWindow FAILED, error: 0x%x\n", __func__, __LINE__, ret);
-		return -ECOMM;
-	}
-
-	ret = wrap_MV_VPPOBJ_ChangeDispWindow(plane_id, &disp_win, &attr);
-	if (ret) {
-		pr_err("%s:%d ChangeDispWindow FAILED, error: 0x%x\n", __func__, __LINE__, ret);
-		return -ECOMM;
-	}
-
-	pr_debug("%s:%d (exit)\n", __func__, __LINE__);
-
-	return 0;
-}
-
 int __weak syna_get_res_index(int active_width, int active_height, int scan, int freq, int fps)
 {
 	return -1;
@@ -370,7 +346,6 @@ int MV_VPP_GetResIndex(int active_width, int active_height, int scan, int freq, 
 }
 
 EXPORT_SYMBOL(MV_VPP_Init);
-EXPORT_SYMBOL(MV_VPP_Config);
 EXPORT_SYMBOL(MV_VPP_DisplayFrame);
 EXPORT_SYMBOL(MV_VPP_make_frame_data);
 EXPORT_SYMBOL(MV_VPP_GetInputFrameSize);

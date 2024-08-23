@@ -64,10 +64,7 @@ static int VPP_Init_Recovery_fastlogo_ta(VPP_MEM_LIST *vpp_shm_list,
 {
 	VPP_INIT_PARM vpp_init_parm;
 	VPP_WIN_ATTR fb_attr;
-	VPP_WIN fb_win;
 	VPP_WIN disp_win;
-	int width;
-	int height;
 	int disp_width;
 	int disp_height;
 	int res = 0;
@@ -166,14 +163,7 @@ static int VPP_Init_Recovery_fastlogo_ta(VPP_MEM_LIST *vpp_shm_list,
 		goto EXIT_DESTROY;
 	}
 
-	//Get the width and height of FB
-	MV_VPP_GetInputFrameSize(planeID, &width, &height);
-
 	MV_VPP_GetOutResolutionSize(CPCB_1, &disp_width, &disp_height);
-	fb_win.x = 0;
-	fb_win.y = 0;
-	fb_win.width  = width;
-	fb_win.height = height;
 
 	fb_attr.bgcolor = 0x801080; // black
 	fb_attr.alpha  = 0xFFF;
@@ -197,12 +187,6 @@ static int VPP_Init_Recovery_fastlogo_ta(VPP_MEM_LIST *vpp_shm_list,
 	}
 #endif //VPP_ENABLE_USE_SET_STILL_PICTURE
 
-	res = wrap_MV_VPPOBJ_SetRefWindow(planeID, &fb_win);
-	if (res != MV_VPP_OK) {
-		pr_err("%s:%d SetRefWindow FAILED, error: 0x%x\n", __func__, __LINE__, res);
-		goto EXIT_DESTROY;
-	}
-
 	pr_info("MV_VPP_Init:Sucess: (libfastlogo.ta)\n");
 
 	return 0;
@@ -223,10 +207,7 @@ static int VPP_Init_Recovery_vpp_ta(VPP_MEM_LIST *vpp_shm_list,
 {
 	VPP_INIT_PARM vpp_init_parm;
 	VPP_WIN_ATTR fb_attr;
-	VPP_WIN fb_win;
 	VPP_WIN disp_win;
-	int width;
-	int height;
 	int disp_width;
 	int disp_height;
 	int res = 0;
@@ -352,14 +333,6 @@ static int VPP_Init_Recovery_vpp_ta(VPP_MEM_LIST *vpp_shm_list,
 		disp_win.width  = disp_width;
 		disp_win.height = disp_height;
 
-		//Get the width and height of FB
-		MV_VPP_GetInputFrameSize(planeID, &width, &height);
-
-		fb_win.x = 0;
-		fb_win.y = 0;
-		fb_win.width  = width;
-		fb_win.height = height;
-
 		fb_attr.bgcolor = 0x801080; // black
 		fb_attr.alpha  = 0xFFF;
 		fb_attr.globalAlphaFlag = (planeID != PLANE_GFX1 ? 0 : 1);
@@ -379,14 +352,7 @@ static int VPP_Init_Recovery_vpp_ta(VPP_MEM_LIST *vpp_shm_list,
 			goto EXIT_DESTROY;
 		}
 #endif //VPP_ENABLE_USE_SET_STILL_PICTURE
-
-		res = wrap_MV_VPPOBJ_SetRefWindow(planeID, &fb_win);
-		if (res != MV_VPP_OK) {
-			pr_err("%s:%d SetRefWindow FAILED, error: 0x%x\n",
-				__func__, __LINE__, res);
-			goto EXIT_DESTROY;
-		}
-    }
+	}
 
 	pr_info("MV_VPP_Init:Sucess: (libfastlogo.ta)\n");
 

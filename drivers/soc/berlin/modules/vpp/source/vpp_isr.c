@@ -18,7 +18,8 @@
 extern vpp_config_params vpp_config_param;
 
 #define HPD_CHECK_TIMEOUT  10*HZ
-static AMPMsgQ_t hVPPMsgQ;
+static AMPMsgQ_t *hVPPIntrQ;
+static AMPMsgQ_t hVPPInputFrameQ;
 static struct semaphore vpp_sem;
 static struct task_struct *vpp_isr_task;
 
@@ -51,22 +52,77 @@ static int VPP_IRQ_Handler(unsigned int irq, void *dev_id)
 
 	intr_num = ffs(irq) - 1;
 
-	if (atomic_read(&vppintr_cnt[intr_num])) {
-		pr_info("Vpp Isr: Dropped Intr %d\n", intr_num);
+	if (atomic_read(&vppintr_cnt[intr_num]))
 		goto EXIT_ISR;
-	} else {
+	else
 		atomic_inc(&vppintr_cnt[intr_num]);
-	}
 
 	msg.m_MsgID = VPP_CC_MSG_TYPE_VPP;
 	msg.m_Param2 = 0;
 	msg.m_Param1 = intr_num;
-	rc = AMPMsgQ_Add(&hVPPMsgQ, &msg);
+	rc = AMPMsgQ_Add(hVPPIntrQ, &msg);
 	if (likely(rc == S_OK))
 		up(&vpp_sem);
 
 EXIT_ISR:
 	return IRQ_HANDLED;
+}
+
+static int VPP_HandleInputQueueMsg(MV_CC_MSG_t *hDisplayFrameMsg)
+{
+	int ret;
+
+	switch (hDisplayFrameMsg->m_MsgID)
+	{
+		case VPP_FRAMEQ_MSGT_DISPLAY_FRAME:
+		{
+			ret = wrap_MV_VPPOBJ_DisplayFrame(hDisplayFrameMsg->m_Param1,
+				(void *)(uintptr_t) hDisplayFrameMsg->pvParam);
+		}
+		break;
+
+		case VPP_FRAMEQ_MSGT_STILL_PICTURE:
+		{
+			ret = wrap_MV_VPPOBJ_SetStillPicture(hDisplayFrameMsg->m_Param1,
+				(void *)(uintptr_t) hDisplayFrameMsg->pvParam);
+		}
+		break;
+
+		default:
+		{
+			pr_err("Message type not supported %d\n",
+				hDisplayFrameMsg->m_MsgID);
+			ret = MV_VPP_EUNSUPPORT;
+		}
+		break;
+	}
+	return ret;
+}
+
+static void VPP_DisplayPreISRService(void)
+{
+	HRESULT rc;
+	MV_CC_MSG_t hDisplayFrameMsg;
+	VBUF_INFO *pFrameInfo;
+	VPP_VBUF *pVppVbufDesc;
+
+	do {
+		rc = AMPMsgQ_ReadTry(&hVPPInputFrameQ, &hDisplayFrameMsg);
+		if (likely(rc == S_OK)) {
+			pFrameInfo = (VBUF_INFO *) hDisplayFrameMsg.pvParam;
+			pVppVbufDesc = pFrameInfo->pVppVbufInfo_virt;
+
+			if (MV_VPP_SetInputFrameSize(hDisplayFrameMsg.m_Param1,
+					pVppVbufDesc->m_content_width,
+					pVppVbufDesc->m_content_height, 1, 1)) {
+				pr_err("Failed to Apply Input Size for plane %d\n",
+						hDisplayFrameMsg.m_Param1);
+				break;
+			}
+			AMPMsgQ_ReadFinish(&hVPPInputFrameQ);
+			VPP_HandleInputQueueMsg(&hDisplayFrameMsg);
+		}
+	} while (rc == S_OK);
 }
 
 static int VPP_ISR_Task(void *param)
@@ -79,12 +135,11 @@ static int VPP_ISR_Task(void *param)
 		rc = down_interruptible(&vpp_sem);
 		if (unlikely(rc < 0))
 			return rc;
-		rc = AMPMsgQ_ReadTry(&hVPPMsgQ, &msg);
-		if (unlikely(rc != S_OK)) {
-			pr_err("%s:%d Failed to read from msgQ\n", __func__, __LINE__);
-			return -EFAULT;
-		}
-		AMPMsgQ_ReadFinish(&hVPPMsgQ);
+		rc = AMPMsgQ_DequeueRead(hVPPIntrQ, &msg);
+		if (unlikely(!rc))
+			continue;
+
+		VPP_DisplayPreISRService();
 
 		intr_num = msg.m_Param1;
 		msg.m_Param1 = bSETMASK(msg.m_Param1);
@@ -108,16 +163,28 @@ static int VPP_ISR_Task(void *param)
 void VPP_CreateISRTask(void)
 {
 	unsigned int err;
+	AMPMsgQ_t *hVPPtmpIntrQ;
 
 	sema_init(&vpp_sem, 0);
 	sema_init(&vpp_vsync_sem, 0);
 	sema_init(&vpp_vsync1_sem, 0);
 	sema_init(&vpp_hdmitx_hpd_sem, 0);
 
-	err = AMPMsgQ_Init(&hVPPMsgQ, VPP_ISR_MSGQ_SIZE);
+	err = AMPMsgQ_Init(&hVPPInputFrameQ, VPP_ISR_MSGQ_SIZE);
 	if (unlikely(err != S_OK))
-		pr_err("%s:%d: VPP MsgQ init FAILED, err:%8x\n", __func__, __LINE__, err);
+		pr_err("%s:%d: VPP Display Frame MsgQ init FAILED, err:%8x\n",
+			__func__, __LINE__, err);
 
+	hVPPtmpIntrQ = kmalloc(sizeof(AMPMsgQ_t), GFP_KERNEL);
+	if (unlikely(!hVPPtmpIntrQ)) {
+		pr_err("%s:%d: VPP MsgQ init mem alloc FAILED\n", __func__, __LINE__);
+	} else {
+		err = AMPMsgQ_Init(hVPPtmpIntrQ, VPP_ISR_MSGQ_SIZE);
+		if (unlikely(err != S_OK))
+			pr_err("%s:%d: VPP MsgQ init FAILED, err:%8x\n", __func__, __LINE__, err);
+		else
+			hVPPIntrQ = hVPPtmpIntrQ;
+	}
 	//Register Callback to wait for VPP VSYNC
 	wrap_MV_VPP_RegisterWaitForVppVsyncCb(wait_vpp_primary_vsync);
 
@@ -127,6 +194,7 @@ void VPP_CreateISRTask(void)
 	vpp_isr_task = kthread_run(VPP_ISR_Task, NULL, "VPP ISR Thread");
 	if (IS_ERR(vpp_isr_task))
 		return;
+
 }
 
 void VPP_StopISRTask(void)
@@ -136,12 +204,15 @@ void VPP_StopISRTask(void)
 
 	kthread_stop(vpp_isr_task);
 	do {
-		err = AMPMsgQ_DequeueRead(&hVPPMsgQ, &msg);
+		err = AMPMsgQ_DequeueRead(hVPPIntrQ, &msg);
 	} while (likely(err == 1));
 	sema_init(&vpp_sem, 0);
-	err = AMPMsgQ_Destroy(&hVPPMsgQ);
+	err = AMPMsgQ_Destroy(hVPPIntrQ);
 	if (unlikely(err != S_OK))
 		pr_err("%s:%d: VPP MsgQ Destroy FAILED, err:%8x\n", __func__, __LINE__, err);
+
+	if (hVPPIntrQ)
+		kfree(hVPPIntrQ);
 }
 
 void VPP_EnableDhubInterrupt(bool enable)
@@ -150,4 +221,20 @@ void VPP_EnableDhubInterrupt(bool enable)
 	for (i = 0; i < ARRAY_SIZE(vpp_intrs); i++) {
 		Dhub_IntrRegisterHandler(DHUB_ID_VPP_DHUB, vpp_intrs[i], NULL, (enable ? VPP_IRQ_Handler : NULL));
 	}
+}
+
+int VPP_PushFrameToInputQueue(int planeId, int msgID, VBUF_INFO *pFrameInfo)
+{
+	MV_CC_MSG_t msg;
+	HRESULT result;
+
+	msg.m_MsgID = msgID;
+	msg.pvParam = pFrameInfo;
+	msg.m_Param1 = planeId;
+
+	result = AMPMsgQ_Add(&hVPPInputFrameQ, &msg);
+	if (unlikely(result != S_OK))
+		pr_err("Push Frame Failed E[%d]\n", result);
+
+	return result;
 }

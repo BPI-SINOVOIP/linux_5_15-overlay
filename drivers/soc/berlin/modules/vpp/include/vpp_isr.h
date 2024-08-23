@@ -9,5 +9,5 @@
 void VPP_CreateISRTask(void);
 void VPP_StopISRTask(void);
 void VPP_EnableDhubInterrupt(bool enable);
-
+int VPP_PushFrameToInputQueue(int planeId, int msgID, VBUF_INFO *pFrameInfo);
 #endif //_VPP_ISR_H_

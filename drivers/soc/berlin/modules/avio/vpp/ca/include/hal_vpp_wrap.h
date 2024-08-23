@@ -42,6 +42,7 @@ int wrap_MV_VPPOBJ_OpenDispWindow(int planeID, VPP_WIN *win, VPP_WIN_ATTR *attr)
 int wrap_MV_VPPOBJ_SetDisplayMode(int planeID, int mode);
 int wrap_MV_VPPOBJ_DisplayFrame(int planeID, void *frame);
 int wrap_MV_VPPOBJ_SetRefWindow(int planeID, VPP_WIN *win);
+int wrap_MV_VPPOBJ_SetRefWindowFromISR(int planeID, VPP_WIN *win);
 int wrap_MV_VPPOBJ_ChangeDispWindow(int planeID, VPP_WIN *win, VPP_WIN_ATTR *attr);
 int wrap_MV_VPPOBJ_SetPlaneMute(int planeID, int mute);
 int wrap_MV_VPPOBJ_ChangeZOrder(int handle, int cpcbID, VPP_ZORDER_CTRL *pZorderCtrl);

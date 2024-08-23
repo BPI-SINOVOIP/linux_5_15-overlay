@@ -156,10 +156,6 @@ static int mrvl_fb_open(struct fb_info *info, int user)
 #endif //SYNAFB_VPP_ENABLE_BLACKFRAME_ON_BOOTUP
 	}
 
-	ret = MV_VPP_FB_Config();
-	if (ret) {
-		pr_err("VPP Config failed\n");
-	}
 	return ret;
 }
 

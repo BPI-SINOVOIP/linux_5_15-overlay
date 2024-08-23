@@ -86,6 +86,11 @@ int __weak TZ_MV_VPPOBJ_SetRefWindow(int planeID, VPP_WIN *win)
 	return 0;
 }
 
+int __weak TZ_MV_VPPOBJ_SetRefWindowFromISR(int planeID, VPP_WIN *win)
+{
+	return 0;
+}
+
 int __weak TZ_MV_VPPOBJ_ChangeDispWindow(int planeID, VPP_WIN *win, VPP_WIN_ATTR *attr)
 {
 	return 0;
