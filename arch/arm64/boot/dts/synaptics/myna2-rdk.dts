@@ -141,6 +141,12 @@
 			gpios = <4 GPIO_ACTIVE_HIGH>;
 			output-high;
 		};
+
+		levelshift_en {
+			gpio-hog;
+			gpios = <5 GPIO_ACTIVE_HIGH>;
+			output-low;
+		};
 	};
 };
 

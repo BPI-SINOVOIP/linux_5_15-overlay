@@ -171,6 +171,11 @@
 		groups = "SM_SPI2_SCLK", "SM_SPI2_SS1n", "SM_SPI2_SS0n";
 		function = "gpio";
 	};
+
+	levelshift_pmux: levelshift-pmux {
+		groups = "SM_HDMI_TX_HPD";
+		function = "gpio";
+	};
 };
 
 &avio_pinctrl {
@@ -962,4 +967,17 @@
 &dvfs {
 	vcore-supply = <&vcore>;
 	status = "okay";
+};
+
+&sm_gpio0 {
+	pinctrl-0 = <&levelshift_pmux>;
+	pinctrl-names = "default";
+
+	portd: gpio-port@4 {
+		levelshift_en {
+			gpio-hog;
+			gpios = <3 GPIO_ACTIVE_HIGH>;
+			output-low;
+		};
+	};
 };
