@@ -37,6 +37,7 @@ isp-objs += isp/drv/isp_driver.o \
 
 HEADER_PATH +=  $(ISP_INC_PATH)    \
 		-I$(srctree)/drivers/soc/berlin/modules/isp/be/drv/src/scl \
+		-I$(srctree)/drivers/soc/berlin/modules/isp/be/drv/src/isp \
 		-I$(srctree)/drivers/soc/berlin/modules/isp/be/drv/src/common \
 		-I$(srctree)/drivers/soc/berlin/modules/isp/be/drv/inc \
 		-I$(srctree)/drivers/soc/berlin/modules/isp/be/v4l2/memops \
@@ -86,7 +87,10 @@ vvcam_vb-objs += isp/vvcam/vb/vvcam_vb_driver.o \
 vvcam_isp_subdev-objs += isp/vvcam/v4l2/isp/vvcam_isp_driver.o \
 		isp/vvcam/v4l2/isp/vvcam_isp_event.o \
 		isp/vvcam/v4l2/isp/vvcam_isp_procfs.o \
-		isp/vvcam/v4l2/isp/isp_ctrl/vvcam_isp_ctrl.o
+		isp/vvcam/v4l2/isp/isp_ctrl/vvcam_isp_ctrl.o \
+		be/drv/src/isp/mtr_isp_wrap.o \
+		be/drv/src/isp/mtr_isp.o \
+		be/drv/src/isp/isp_bcm.o
 
 vvcam_video-objs += isp/vvcam/v4l2/video/vvcam_video_driver.o \
         isp/vvcam/v4l2/video/vvcam_video_register.o \

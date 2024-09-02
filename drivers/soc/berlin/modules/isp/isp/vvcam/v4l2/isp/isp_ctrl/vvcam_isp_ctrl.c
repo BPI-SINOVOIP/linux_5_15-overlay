@@ -55,6 +55,10 @@
 #include "vvcam_isp_driver.h"
 #include "vvcam_isp_ctrl.h"
 
+#ifdef DOLPHIN
+#include "vvcam_video_iommu.h"
+#endif
+
 #if defined(ISP_AE_V3)
 #include "vvcam_isp_ae.h"
 #endif
@@ -163,6 +167,10 @@ int vvcam_isp_ctrl_init(struct vvcam_isp_dev *isp_dev)
 {
     uint32_t ctrl_count = 0;
 
+#ifdef DOLPHIN
+    ctrl_count += vvcam_video_iommu_ctrl_count();
+#endif
+
 #if defined(ISP_AE_V3)
     ctrl_count += vvcam_isp_ae_ctrl_count();
 #endif
@@ -268,6 +276,10 @@ int vvcam_isp_ctrl_init(struct vvcam_isp_dev *isp_dev)
 #endif
 
     v4l2_ctrl_handler_init(&isp_dev->ctrl_handler,  ctrl_count);
+
+#ifdef DOLPHIN
+    vvcam_video_iommu_ctrl_create(isp_dev);
+#endif
 
 #if defined(ISP_AE_V3)
     vvcam_isp_ae_ctrl_create(isp_dev);

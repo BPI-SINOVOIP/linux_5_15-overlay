@@ -114,7 +114,7 @@ int vvcam_isp_post_event(struct v4l2_subdev *sd, struct vvcam_isp_event_pkg *eve
     }
 
     if (event_pkg->result) {
-        dev_err(sd->dev, "post event %d return error\n", event.id);
+        dev_err(sd->dev, "post event %d return error %d\n", event.id, event_pkg->result);
         return -EINVAL;
     }
 
@@ -199,7 +199,13 @@ int vvcam_isp_qbuf_event(struct vvcam_isp_dev *isp_dev, int pad, struct vvcam_vb
     return ret;
 }
 
-int vvcam_isp_s_stream_event(struct vvcam_isp_dev *isp_dev, int pad, uint32_t status)
+#ifdef DOLPHIN
+int vvcam_isp_s_stream_event(struct vvcam_isp_dev *isp_dev, int pad,
+		struct vvcam_stream_param *param)
+#else
+int vvcam_isp_s_stream_event(struct vvcam_isp_dev *isp_dev, int pad,
+		uint32_t status)
+#endif
 {
     struct vvcam_isp_event_pkg *event_pkg = isp_dev->event_shm.virt_addr;
     int ret = 0;
@@ -207,7 +213,7 @@ int vvcam_isp_s_stream_event(struct vvcam_isp_dev *isp_dev, int pad, uint32_t st
     mutex_lock(&isp_dev->event_shm.event_lock);
     event_pkg->head.pad = pad;
     event_pkg->head.dev = isp_dev->id;
-    if (status) {
+    if (param->status) {
         event_pkg->head.eid = VVCAM_ISP_EVENT_STREAMON;
     } else {
         event_pkg->head.eid = VVCAM_ISP_EVENT_STREAMOFF;
@@ -218,6 +224,10 @@ int vvcam_isp_s_stream_event(struct vvcam_isp_dev *isp_dev, int pad, uint32_t st
     event_pkg->head.data_size = 0;
     event_pkg->ack = 0;
     event_pkg->result = 0;
+#ifdef DOLPHIN
+    event_pkg->head.data_size = sizeof(struct isp_iommu_context);
+    memcpy(event_pkg->data, &param->iommu_ctx, sizeof(struct isp_iommu_context));
+#endif
 
     ret = vvcam_isp_post_event(&isp_dev->sd, event_pkg);
 

@@ -141,7 +141,7 @@ void ISPSS_CA_ClockGateSharedResources(BOOL state)
 
 	clkgate_ctx = &g_ispbe_ca_ctx.clkgate_ctx;
 	mutex_lock(&clkgate_ctx->ispbe_clkgate_mutex);
-	if (state == 1) {
+	if (state == ISPSS_CLK_STATE_ENABLE) {
 		if (clkgate_ctx->ispbe_clkgate_shared_refcnt == 0) {
 			ISPSS_CLKRST_ISPMiscModuleSetClockGateState(ISPMISC_MODULE_BCM,
 					ISPSS_CLKRST_CLK_STATE_ENABLE);
@@ -151,7 +151,7 @@ void ISPSS_CA_ClockGateSharedResources(BOOL state)
 					ISPSS_CLKRST_CLK_STATE_ENABLE);
 		}
 		clkgate_ctx->ispbe_clkgate_shared_refcnt++;
-	} else if (state == 0) {
+	} else if (state == ISPSS_CLK_STATE_DISABLE) {
 		if (clkgate_ctx->ispbe_clkgate_shared_refcnt > 0)
 			clkgate_ctx->ispbe_clkgate_shared_refcnt -= 1;
 		if (clkgate_ctx->ispbe_clkgate_shared_refcnt == 0) {
@@ -208,7 +208,7 @@ INT ISPBE_CA_Initialize(void)
 	g_ispbe_ca_ctx.clkgate_ctx.ispbe_clkgate_shared_refcnt = 0;
 	mutex_init(&g_ispbe_ca_ctx.clkgate_ctx.ispbe_clkgate_mutex);
 
-	ISPSS_CA_ClockGateSharedResources(0);
+	ISPSS_CA_ClockGateSharedResources(ISPSS_CLK_STATE_DISABLE);
 	for (module = ISPBE_MODULE_MIN; module < ISPBE_MODULE_MAX; ++module)
 		ISPSS_CLKRST_ISPBeModuleSetClockGateState(module, ISPSS_CLKRST_CLK_STATE_DISABLE);
 
@@ -259,7 +259,7 @@ INT ISPBE_MODULE_Init(enum ISPBE_MODULES module, struct ISPBE_CA_DRV_CTX module_
 		if (module == ISPBE_MODULE_TILER) {
 			mutex_lock(&clkgate_ctx->ispbe_clkgate_mutex);
 			//TODO verify with tiler
-			ISPSS_CA_ClockGateSharedResources(1);
+			ISPSS_CA_ClockGateSharedResources(ISPSS_CLK_STATE_ENABLE);
 			if (clkgate_ctx->ispbe_clkgate_module_refcnt[module] == 0) {
 				ISPSS_CLKRST_ISPBeModuleSetClockGateState(module,
 						ISPSS_CLKRST_CLK_STATE_ENABLE);
@@ -307,7 +307,7 @@ INT ISPBE_MODULE_Destroy(enum ISPBE_MODULES module)
 						ISPSS_CLKRST_CLK_STATE_DISABLE);
 			}
 			mutex_unlock(&clkgate_ctx->ispbe_clkgate_mutex);
-			ISPSS_CA_ClockGateSharedResources(0);
+			ISPSS_CA_ClockGateSharedResources(ISPSS_CLK_STATE_DISABLE);
 		}
 	} else {
 		Ret = ISPSS_EBADCALL;
@@ -338,7 +338,7 @@ INT ISPBE_MODULE_Open(enum ISPBE_MODULES module, INT *clientID,
 		if (Ret == S_OK)
 			drv_ctx->client_cb[*clientID] = client_cb;
 
-		ISPSS_CA_ClockGateSharedResources(1);
+		ISPSS_CA_ClockGateSharedResources(ISPSS_CLK_STATE_ENABLE);
 
 		mutex_lock(&clkgate_ctx->ispbe_clkgate_mutex);
 		if (clkgate_ctx->ispbe_clkgate_module_refcnt[module] == 0) {
@@ -389,7 +389,7 @@ INT ISPBE_MODULE_Close(enum ISPBE_MODULES module, INT clientID)
 					ISPSS_CLKRST_CLK_STATE_DISABLE);
 		}
 		mutex_unlock(&clkgate_ctx->ispbe_clkgate_mutex);
-		ISPSS_CA_ClockGateSharedResources(0);
+		ISPSS_CA_ClockGateSharedResources(ISPSS_CLK_STATE_DISABLE);
 	} else
 		Ret = ISPSS_EBADCALL;
 

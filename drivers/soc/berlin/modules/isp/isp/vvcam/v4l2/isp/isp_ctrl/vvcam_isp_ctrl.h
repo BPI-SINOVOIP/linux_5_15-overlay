@@ -84,6 +84,9 @@
 #define VVCAM_ISP_CID_AFM_BASE      (V4L2_CID_USER_BASE + 0x3A00)
 #define VVCAM_ISP_CID_EXP_BASE      (V4L2_CID_USER_BASE + 0x3B00)
 #define VVCAM_ISP_CID_GWDR_BASE     (V4L2_CID_USER_BASE + 0x3C00)
+#ifdef DOLPHIN
+#define VVCAM_VIDEO_CID_IOMMU_BASE  (V4L2_CID_USER_BASE + 0x3D00)
+#endif
 
 int vvcam_isp_ctrl_init(struct vvcam_isp_dev *isp_dev);
 int vvcam_isp_ctrl_destroy(struct vvcam_isp_dev *isp_dev);

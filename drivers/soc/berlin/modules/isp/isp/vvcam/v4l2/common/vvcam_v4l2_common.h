@@ -62,11 +62,31 @@ struct vvcam_video_plane {
 
 struct vvcam_vb2_buffer {
     struct vb2_v4l2_buffer vb;
-	unsigned int num_planes;
-	struct vvcam_video_plane planes[VIDEO_MAX_PLANES];
+    unsigned int num_planes;
+    struct vvcam_video_plane planes[VIDEO_MAX_PLANES];
     struct list_head list;
     uint32_t sequence;
+#ifdef DOLPHIN
+    bool is_pushed_queue;
+#endif
 };
+
+#ifdef DOLPHIN
+struct isp_iommu_context {
+    u32 iommu_enabled;
+    u64 dnr3_pa;
+};
+
+struct vvcam_stream_param {
+	uint32_t status;
+	struct isp_iommu_context iommu_ctx;
+};
+
+struct vvcam_pad_set_format {
+    uint32_t pad;
+    struct v4l2_format v4l2_format;
+};
+#endif
 
 struct vvcam_pad_reqbufs {
     int pad;
@@ -80,7 +100,11 @@ struct vvcam_pad_buf {
 
 struct vvcam_pad_stream_status {
     uint32_t pad;
+#ifdef DOLPHIN
+    struct vvcam_stream_param param;
+#else
     uint32_t status;
+#endif
 };
 
 struct vvcam_pad_queryctrl {
@@ -121,5 +145,8 @@ struct vvcam_pad_querymenu {
 #define VVCAM_PAD_S_EXT_CTRLS    _IOWR('V',  BASE_VIDIOC_PRIVATE + 9, struct vvcam_pad_ext_controls)
 #define VVCAM_PAD_TRY_EXT_CTRLS  _IOWR('V',  BASE_VIDIOC_PRIVATE + 10, struct vvcam_pad_ext_controls)
 #define VVCAM_PAD_QUERYMENU      _IOWR('V',  BASE_VIDIOC_PRIVATE + 11, struct vvcam_pad_querymenu)
+#ifdef DOLPHIN
+#define VVCAM_PAD_SET_FORMAT     _IOWR('V',  BASE_VIDIOC_PRIVATE + 12, struct vvcam_pad_set_format)
+#endif
 
 #endif

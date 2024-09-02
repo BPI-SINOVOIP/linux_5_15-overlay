@@ -1,3 +1,5 @@
+vvcam_isp_subdev-objs += isp/vvcam/v4l2/isp/isp_ctrl/iommu/vvcam_video_iommu.o
+HEADER_PATH += -I$(srctree)/drivers/soc/berlin/modules/isp/isp/vvcam/v4l2/isp/isp_ctrl/iommu/
 ifeq ($(ISP_AE_V3), 1)
 vvcam_isp_subdev-objs += isp/vvcam/v4l2/isp/isp_ctrl/ae/ae_v3/vvcam_isp_ae.o
 HEADER_PATH += -I$(srctree)/drivers/soc/berlin/modules/isp/isp/vvcam/v4l2/isp/isp_ctrl/ae/ae_v3/

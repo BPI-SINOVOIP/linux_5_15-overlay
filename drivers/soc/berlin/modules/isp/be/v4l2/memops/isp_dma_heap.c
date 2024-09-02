@@ -17,36 +17,6 @@ DEFINE_MUTEX(isp_dma_heap_mutex);
 static bool isp_dma_heap_memdev_init;
 static struct list_head isp_dma_heap_memdevs;
 
-struct isp_dma_heap_dev {
-	struct device dev;
-	struct dma_heap *heap;
-	struct list_head link;
-	enum memory_type_t mem_type;
-};
-
-struct isp_dma_buf {
-	struct device               *dev;
-	void                        *vaddr;//Virtual address of kernel space only frmae
-	void                        *paddr;//Physical address frame
-	void                        *paddr_pt;//Physical address page table
-	unsigned long               size;
-	void                        *cookie;
-	unsigned long               attrs;
-	enum dma_data_direction     dma_dir;
-	struct sg_table             *dma_sgt;
-
-	/* MMAP related */
-	struct vb2_vmarea_handler   handler;
-	refcount_t                  refcount;
-
-	/* DMABUF related */
-	struct dma_buf_attachment   *db_attach;
-	struct dma_buf_map          *map;
-
-	enum memory_type_t          mem_type;
-	struct bm_pt_param          pt_param;
-	struct vb2_buffer           *vb;
-};
 
 static struct isp_dma_heap_dev *alloc_memdev(const char *heap_name,
 		enum memory_type_t mem_type)
@@ -243,7 +213,7 @@ static int vb2_isp_dma_heap_mmap(void *buf_priv, struct vm_area_struct *vma)
 /*        callbacks for MMAP buffers         */
 /*********************************************/
 
-static void isp_dma_heap_free(void *buf_priv)
+void isp_dma_heap_free(void *buf_priv)
 {
 	struct isp_dma_buf *buf = buf_priv;
 
@@ -269,13 +239,14 @@ static void isp_dma_heap_free(void *buf_priv)
 	kfree(buf->map);
 	kfree(buf);
 }
+EXPORT_SYMBOL(isp_dma_heap_free);
 
 static void vb2_isp_dma_heap_put(void *buf_priv)
 {
 	isp_dma_heap_free(buf_priv);
 }
 
-static void *get_isp_dma_heap_alloc(struct isp_dma_heap_dev *memdev,
+void *get_isp_dma_heap_alloc(struct isp_dma_heap_dev *memdev,
 		unsigned long size)
 {
 	struct isp_dma_buf *buf;
@@ -359,9 +330,9 @@ static void *get_isp_dma_heap_alloc(struct isp_dma_heap_dev *memdev,
 	buf->handler.put = vb2_isp_dma_heap_put;
 	buf->handler.arg = buf;
 
-	pr_debug("%s :The vaddr %lx paddr %lx pt_addr %lx size %lx\n",
+	pr_debug("%s :The vaddr %lx paddr %lx pt_addr %lx size %lx size1 %lx\n",
 			__func__, (unsigned long)buf->vaddr, (unsigned long)buf->paddr,
-			(unsigned long)buf->paddr_pt, (unsigned long) buf->pt_param.len);
+			(unsigned long)buf->paddr_pt, (unsigned long) buf->pt_param.len, size);
 
 	refcount_set(&buf->refcount, 1);
 
@@ -380,6 +351,7 @@ failed_alloc1:
 	kfree(buf);
 	return ERR_PTR(ret);
 }
+EXPORT_SYMBOL(get_isp_dma_heap_alloc);
 
 static void *vb2_isp_dma_heap_alloc(struct vb2_buffer *vb, struct device *dev,
 		unsigned long size)
@@ -677,10 +649,12 @@ static void *vb2_isp_dma_heap_attach_dmabuf(struct vb2_buffer *vb,
 	ret = bm_fetch_pt(dbuf, &buf->pt_param);
 	if (ret) {
 		pr_debug("bm refuse to register: %d\n", ret);
+		/* At this point we don't know if the memory is contiguous or not. For the
+         * contiguous case, error should not be returned, attach should still happen
+         */
 	} else {
 		buf->paddr_pt = (void *)buf->pt_param.phy_addr;
 	}
-
 	buf->dev = dev;
 	buf->vb = vb;
 	buf->cookie = dbuf;

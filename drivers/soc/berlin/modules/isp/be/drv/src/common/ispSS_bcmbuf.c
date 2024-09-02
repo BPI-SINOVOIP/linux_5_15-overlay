@@ -7,6 +7,7 @@
  * published by the Free Software Foundation.
  */
 #include <linux/mutex.h>
+#include <linux/delay.h>
 
 #include "ispSS_bcmbuf.h"
 #include "ispSS_reg.h"
@@ -444,10 +445,10 @@ int ISPSS_BCMDHUB_CFGQ_Commit(struct DHUB_CFGQ *cfgQ, int cpcbID, int intrType, 
 	UNSG32 FullSts;
 	unsigned int bcm_sched_cmd[2];
 	int ret  = ISPSS_OK;
-
 	struct HDL_semaphore *pSemHandle;
 	struct HDL_dhub2d *pDhubHandle;
 	int dhubID, status;
+	int counter;
 
 	if (!cfgQ)
 		return ISPSS_EBADPARAM;
@@ -479,6 +480,13 @@ int ISPSS_BCMDHUB_CFGQ_Commit(struct DHUB_CFGQ *cfgQ, int cpcbID, int intrType, 
 			semaphore_clr_full(pSemHandle, dhubID);
 
 			status = semaphore_chk_full(pSemHandle, dhubID);
+			udelay(1);
+			counter++;
+			if (counter % 20000l == 0) {
+				ret = ISPSS_EBCMBUFFULL;
+				pr_err("%s %d: sem full: %X\n", __func__, __LINE__, status);
+				goto exit;
+			}
 		}
 	}
 
@@ -488,17 +496,28 @@ int ISPSS_BCMDHUB_CFGQ_Commit(struct DHUB_CFGQ *cfgQ, int cpcbID, int intrType, 
 
 	while (!BCM_SCHED_PushCmd(sched_qid, bcm_sched_cmd, NULL))
 		;
-
+	counter = 0;
 	if (block) {
 		pSemHandle = dhub_semaphore(&(pDhubHandle->dhub));
 		status = semaphore_chk_full(pSemHandle, dhubID);
+		counter = 0;
+
 		while (!status) {
 			status = semaphore_chk_full(pSemHandle, dhubID);
-			pr_debug("%s %d: sem full: %X\n", __func__, __LINE__, status);
+			udelay(1);
+			counter++;
+			if (counter % 30000 == 0) {
+				pr_err("%s %d: sem full: %X qnum %d\n", __func__, __LINE__,
+					status, intrType);
+				ret = ISPSS_EBCMBUFFULL;
+				break;
+			}
 		}
+
 		semaphore_pop(pSemHandle, dhubID, 1);
 		semaphore_clr_full(pSemHandle, dhubID);
 	}
+exit:
 	mutex_unlock(&gBCM_SUBMIT_lock);
 
 	return ret;

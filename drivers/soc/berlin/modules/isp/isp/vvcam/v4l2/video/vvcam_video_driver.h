@@ -106,6 +106,11 @@ struct vvcam_video_dev {
 	struct v4l2_format format;
 	uint32_t pipeline;
 	struct vvcam_video_event_shm event_shm;
+#ifdef DOLPHIN
+	uint8_t is_first_buffer;
+	uint8_t mmu_enabled;
+	uint8_t port_num;
+#endif
 };
 
 struct vvcam_media_dev {

@@ -10,10 +10,47 @@
 #ifndef __ISP_DMAHEAP_H__
 #define __ISP_DMAHEAP_H__
 
+#include <linux/dma-mapping.h>
+#include <linux/dma-heap.h>
+#include <synaptics/bm.h>
+#include <media/videobuf2-memops.h>
+#include "isp_dma_heap.h"
+
 enum memory_type_t {
 	SHM_NONSECURE_CONTIG  = 0,
 	SHM_NONSECURE_NON_CONTIG,
 	SHM_MAX_MEMORY_TYPE,
+};
+
+struct isp_dma_heap_dev {
+	struct device dev;
+	struct dma_heap *heap;
+	struct list_head link;
+	enum memory_type_t mem_type;
+};
+
+struct isp_dma_buf {
+	struct device               *dev;
+	void                        *vaddr;//Virtual address of kernel space only frmae
+	void                        *paddr;//Physical address frame
+	void                        *paddr_pt;//Physical address page table
+	unsigned long               size;
+	void                        *cookie;
+	unsigned long               attrs;
+	enum dma_data_direction     dma_dir;
+	struct sg_table             *dma_sgt;
+
+	/* MMAP related */
+	struct vb2_vmarea_handler   handler;
+	refcount_t                  refcount;
+
+	/* DMABUF related */
+	struct dma_buf_attachment   *db_attach;
+	struct dma_buf_map          *map;
+
+	enum memory_type_t          mem_type;
+	struct bm_pt_param          pt_param;
+	struct vb2_buffer           *vb;
 };
 
 static inline void *
@@ -34,6 +71,9 @@ isp_dma_heap_plane_cookie(struct vb2_buffer *vb, unsigned int plane_no)
 
 int isp_dma_heap_dev_alloc(struct device **pdev);
 void isp_dma_heap_dev_release(void);
+void *get_isp_dma_heap_alloc(struct isp_dma_heap_dev *memdev,
+		unsigned long size);
+void isp_dma_heap_free(void *buf_priv);
 void *isp_dma_heap_get_phyaddr(void *handle);
 void *isp_dma_heap_get_pagetbl_phyaddr(void *handle);
 

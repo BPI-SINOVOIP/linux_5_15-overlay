@@ -143,7 +143,6 @@ irqreturn_t vvcam_isp_irq_process(struct vvcam_isp_dev *isp_dev)
 
     isp_mis = vvcam_isp_hal_read_reg(isp_dev->base, ISP_CORE_BASE + ISP_MIS);
     if (isp_mis) {
-        // printk("isp_mis mis 0x%08x\n", isp_mis);
         vvcam_isp_hal_write_reg(isp_dev->base, ISP_CORE_BASE + ISP_ICR, isp_mis);
     } else {
         return IRQ_NONE;
@@ -187,7 +186,6 @@ irqreturn_t vvcam_isp_mi_irq_process(struct vvcam_isp_dev *isp_dev)
 
     miv2_mis = vvcam_isp_hal_read_reg(isp_dev->base, ISP_CORE_BASE + MIV2_MIS);
     if (miv2_mis) {
-        //printk("miv2 mis 0x%08x\n", miv2_mis);
         vvcam_isp_hal_write_reg(isp_dev->base, ISP_CORE_BASE + MIV2_ICR, miv2_mis);
         irq = true;
     }

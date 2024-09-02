@@ -109,10 +109,17 @@ struct vvcam_isp_event_pkg {
 #ifdef __KERNEL__
 #include "vvcam_isp_driver.h"
 
-int vvcam_isp_set_fmt_event(struct vvcam_isp_dev *isp_dev, int pad, struct v4l2_mbus_framefmt *format);
+int vvcam_isp_set_fmt_event(struct vvcam_isp_dev *isp_dev, int pad,
+        struct v4l2_mbus_framefmt *format);
 int vvcam_isp_requebus_event(struct vvcam_isp_dev *isp_dev, int pad, uint32_t num_buffers);
 int vvcam_isp_qbuf_event(struct vvcam_isp_dev *isp_dev, int pad, struct vvcam_vb2_buffer *buf);
-int vvcam_isp_s_stream_event(struct vvcam_isp_dev *isp_dev, int pad, uint32_t status);
+#ifdef DOLPHIN
+int vvcam_isp_s_stream_event(struct vvcam_isp_dev *isp_dev, int pad,
+        struct vvcam_stream_param *param);
+#else
+int vvcam_isp_s_stream_event(struct vvcam_isp_dev *isp_dev, int pad,
+        uint32_t status);
+#endif
 int vvcam_isp_s_ctrl_event(struct vvcam_isp_dev *isp_dev, int pad, struct v4l2_ctrl *ctrl);
 int vvcam_isp_g_ctrl_event(struct vvcam_isp_dev *isp_dev, int pad, struct v4l2_ctrl *ctrl);
 

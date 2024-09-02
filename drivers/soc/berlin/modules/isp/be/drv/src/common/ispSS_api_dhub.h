@@ -15,7 +15,7 @@
 
 
 void BCM_SCHED_GetFullSts(UNSG32 QID, UNSG32 *FullSts);
-void BCM_SCHED_Flush(void);
+void BCM_SCHED_Flush(UNSG32 mask);
 
 struct HDL_semaphore {
 	UNSG32			ra;			/*!	Base address of $SemaHub !*/
@@ -904,7 +904,7 @@ enum ENUM_BCM_SCHED_TRIG_EVENT {
 
 void BCM_SCHED_Open(void);
 void BCM_SCHED_Close(void);
-void BCM_SCHED_SetMux(UNSG32 QID, UNSG32 TrigEvent);
+void BCM_SchedSetMux(UNSG32 QID, UNSG32 TrigEvent);
 int BCM_SCHED_PushCmd(UNSG32 QID, UNSG32 *pCmd, UINT64 *cfgQ);
 void BCM_SCHED_GetEmptySts(UNSG32 QID, UNSG32 *EmptySts);
 

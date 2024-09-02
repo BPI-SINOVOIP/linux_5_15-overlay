@@ -1136,22 +1136,18 @@ UNSG32 ispss_dhub2nd_channel_cfg(
 	IO32CFG(cfgQ, j, a + RA_dHubCmd2ND_DESC, cmd.u32dHubCmd2ND_DESC);
 
 	memset(&cmd, 0, sizeof(SIE_dHubCmd2ND));
-	cmd.u32dHubCmd2ND_DESC_1D_ST = 0;
 	cmd.uDESC_1D_ST_step = step1;
 	IO32CFG(cfgQ, j, a + RA_dHubCmd2ND_DESC_1D_ST, cmd.u32dHubCmd2ND_DESC_1D_ST);
 
 	memset(&cmd, 0, sizeof(SIE_dHubCmd2ND));
-	cmd.u32dHubCmd2ND_DESC_1D_SZ = 0;
 	cmd.uDESC_1D_SZ_size = size1;
 	IO32CFG(cfgQ, j, a + RA_dHubCmd2ND_DESC_1D_SZ, cmd.u32dHubCmd2ND_DESC_1D_SZ);
 
 	memset(&cmd, 0, sizeof(SIE_dHubCmd2ND));
-	cmd.u32dHubCmd2ND_DESC_2D_ST = 0;
 	cmd.uDESC_2D_ST_step = step2;
 	IO32CFG(cfgQ, j, a + RA_dHubCmd2ND_DESC_2D_ST, cmd.u32dHubCmd2ND_DESC_2D_ST);
 
 	memset(&cmd, 0, sizeof(SIE_dHubCmd2ND));
-	cmd.u32dHubCmd2ND_DESC_2D_SZ = 0;
 	cmd.uDESC_2D_SZ_size = size2;
 	IO32CFG(cfgQ, j, a + RA_dHubCmd2ND_DESC_2D_SZ, cmd.u32dHubCmd2ND_DESC_2D_SZ);
 
@@ -1252,7 +1248,7 @@ void BCM_SCHED_Close(void)
 	mutex_destroy(&gBCM_SCHED_lock);
 }
 
-void BCM_SCHED_SetMux(UNSG32 QID, UNSG32 TrigEvent)
+void BCM_SchedSetMux(UNSG32 QID, UNSG32 TrigEvent)
 {
 	UNSG32 addr;
 	UNSG32 bcmBaseAddr = getBcmBaseAddr();
@@ -1268,6 +1264,7 @@ void BCM_SCHED_SetMux(UNSG32 QID, UNSG32 TrigEvent)
 		ISPSS_REG_WRITE32(bcmBaseAddr + addr, TrigEvent);
 	}
 }
+EXPORT_SYMBOL(BCM_SchedSetMux);
 
 int BCM_SCHED_AutoPushCmd(UNSG32 QID, UNSG8 uchEnable)
 {
@@ -1413,12 +1410,13 @@ void BCM_SCHED_GetFullSts(UNSG32 QID, UNSG32 *FullSts)
 }
 EXPORT_SYMBOL(BCM_SCHED_GetFullSts);
 
-void BCM_SCHED_Flush(void)
+void BCM_SCHED_Flush(UNSG32 mask)
 {
 	UNSG32 bcmBaseAddr = getBcmBaseAddr();
 
-	ISPSS_REG_WRITE32(bcmBaseAddr + RA_ISP_BCM_BCM_FLUSH, 0x3);
+	ISPSS_REG_WRITE32(bcmBaseAddr + RA_ISP_BCM_BCM_FLUSH, mask);
 }
+EXPORT_SYMBOL(BCM_SCHED_Flush);
 
 /****************************************************
  *  dhub2d_channel_clear_seq()

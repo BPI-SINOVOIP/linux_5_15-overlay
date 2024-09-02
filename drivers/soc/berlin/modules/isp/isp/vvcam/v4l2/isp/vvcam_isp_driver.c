@@ -77,6 +77,13 @@
 #ifdef VVCAM_SUBDEV_PLATFORM_REGISTER
 #include "vvcam_isp_platform.h"
 #endif
+#ifdef DOLPHIN
+#include "mtr_isp_wrap.h"
+#include "isp_bcm.h"
+#include "ispbe_api.h"
+#include "isp_dma_heap.h"
+#include "ispSS_reg.h"
+#endif
 
 #define VVCAM_ISP_DEFAULT_SENSOR        "imx258"
 #define VVCAM_ISP_DEFAULT_SENSOR_MODE   0
@@ -172,6 +179,61 @@ struct vvcam_isp_mbus_fmt vvcam_isp_sp_fmts[] = {
     },
 };
 
+#ifdef DOLPHIN
+uint32_t vvcam_isp_get_mtr_path(uint32_t pad_index)
+{
+    uint32_t path = ISPSS_MTR_PATH_MP0_WR;
+
+    switch (pad_index) {
+    case VVCAM_ISP_PAD_SOURCE_P0MP:
+        path = ISPSS_MTR_PATH_MP0_WR;
+        break;
+    case VVCAM_ISP_PAD_SOURCE_P0SP1:
+        path = ISPSS_MTR_PATH_MP1_WR;
+        break;
+    case VVCAM_ISP_PAD_SOURCE_P0SP2:
+        path = ISPSS_MTR_PATH_SP2_WR0;
+        break;
+    default:
+        break;
+    }
+
+    return path;
+}
+EXPORT_SYMBOL(vvcam_isp_get_mtr_path);
+
+static void push_bufs(struct vvcam_isp_dev *isp_dev, int pad)
+{
+    struct vvcam_vb2_buffer *pos, *next;
+    struct vvcam_isp_pad_data *cur_pad;
+    void *pBcmBuf = NULL;
+
+    cur_pad = &isp_dev->pad_data[pad];
+
+    if (isp_dev->mmu_enabled) {
+        mutex_lock(&cur_pad->q_lock);
+        list_for_each_entry_safe(pos, next, &cur_pad->queue, list) {
+            if (!is_isp_bcm_buffer_full()) {
+                if (pos && (pos->is_pushed_queue == 0)) {
+                    pBcmBuf = isp_bcm_get_next_bcmbuf();
+                    ISPSS_MTR_ConfigureMtr(&cur_pad->v4l2_format, pos->planes[0].dma_addr,
+                            pos->planes[1].dma_addr, vvcam_isp_get_mtr_path(pad), pBcmBuf);
+                    //pos->planes[1].dma_addr, vvcam_isp_get_mtr_path(pad), NULL);
+                    if (isp_bcm_commit(pBcmBuf, 0) == 0) {
+                        pos->is_pushed_queue = 1;
+                        //break;
+                    }
+                }
+            } else {
+                pr_err("%s: bcm full\n", __func__);
+                break;
+            }
+        }
+        mutex_unlock(&cur_pad->q_lock);
+    }
+}
+#endif
+
 static int vvcam_isp_querycap(struct v4l2_subdev *sd, void *arg)
 {
 	struct v4l2_capability *cap = (struct v4l2_capability *)arg;
@@ -197,19 +259,17 @@ static int vvcam_isp_pad_buf_queue(struct v4l2_subdev *sd, void *arg)
     struct vvcam_pad_buf *pad_buf = (struct vvcam_pad_buf *)arg;
     struct vvcam_isp_dev *isp_dev = v4l2_get_subdevdata(sd);
     int ret;
-    unsigned long flags;
     struct vvcam_isp_pad_data *cur_pad;
 
     cur_pad = &isp_dev->pad_data[pad_buf->pad];
 
-    spin_lock_irqsave(&cur_pad->qlock, flags);
+    mutex_lock(&cur_pad->q_lock);
 
     list_add_tail(&pad_buf->buf->list, &cur_pad->queue);
 
-	spin_unlock_irqrestore(&cur_pad->qlock, flags);
+    mutex_unlock(&cur_pad->q_lock);
 
     ret = vvcam_isp_qbuf_event(isp_dev, pad_buf->pad, pad_buf->buf);
-
     return ret;
 }
 
@@ -219,22 +279,36 @@ static int vvcam_isp_pad_s_stream(struct v4l2_subdev *sd, void *arg)
     struct vvcam_isp_dev *isp_dev = v4l2_get_subdevdata(sd);
     int ret;
 
-    isp_dev->pad_data[pad_stream->pad].stream = pad_stream->status;
-
-    if (pad_stream->status == 0 ) {
+#ifdef DOLPHIN
+    isp_dev->pad_data[pad_stream->pad].stream = pad_stream->param.status;
+    if (pad_stream->param.status == 0) {
+        // No need of calling MTR exit
+        isp_bcm_deconfigure();
+        ISPSS_MTR_QOS_Config(QOS_DISABLE);
+        ISPSS_CA_ClockGateSharedResources(ISPSS_CLK_STATE_DISABLE);
         INIT_LIST_HEAD(&isp_dev->pad_data[pad_stream->pad].queue);
+    } else {
+        ISPSS_CA_ClockGateSharedResources(ISPSS_CLK_STATE_ENABLE);
+        ISPSS_MTR_QOS_Config(QOS_ENABLE);
+        isp_bcm_configure(pad_stream->pad);
     }
+    ret = vvcam_isp_s_stream_event(isp_dev, pad_stream->pad, &pad_stream->param);
+#else
+    isp_dev->pad_data[pad_stream->pad].stream = pad_stream->status;
+    if (pad_stream->status == 0) {
+        INIT_LIST_HEAD(&isp_dev->pad_data[pad_stream->pad].queue);
     ret = vvcam_isp_s_stream_event(isp_dev, pad_stream->pad, pad_stream->status);
+#endif
 
     return ret;
 }
+
 
 static int vvcam_isp_buf_done(struct v4l2_subdev *sd, void *arg)
 {
     struct vvcam_isp_buf ubuf;
     struct vvcam_isp_pad_data *cur_pad;
     struct vvcam_isp_dev *isp_dev = v4l2_get_subdevdata(sd);
-    unsigned long flags;
     struct vvcam_vb2_buffer *pos, *next;
     struct vvcam_vb2_buffer *buf = NULL;
     struct media_pad *pad;
@@ -250,15 +324,15 @@ static int vvcam_isp_buf_done(struct v4l2_subdev *sd, void *arg)
     if (list_empty(&cur_pad->queue) || (cur_pad->stream == 0))
         return -EINVAL;
 
-    spin_lock_irqsave(&cur_pad->qlock, flags);
+    mutex_lock(&cur_pad->q_lock);
     list_for_each_entry_safe(pos, next, &cur_pad->queue, list) {
         if (pos && (pos->sequence == ubuf.index)) {
-           buf = pos;
-           list_del(&pos->list);
-           break;
+            buf = pos;
+            list_del(&pos->list);
+            break;
         }
     }
-    spin_unlock_irqrestore(&cur_pad->qlock, flags);
+    mutex_unlock(&cur_pad->q_lock);
 
     if (buf) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
@@ -277,16 +351,28 @@ static int vvcam_isp_buf_done(struct v4l2_subdev *sd, void *arg)
             if (ret)
                 return ret;
 
-        } else if (is_media_entity_v4l2_video_device(pad->entity)){
+        } else if (is_media_entity_v4l2_video_device(pad->entity)) {
             video = media_entity_to_video_device(pad->entity);
             if (buf->sequence < video->queue->num_buffers) {
                 if (buf->vb.vb2_buf.state == VB2_BUF_STATE_ACTIVE) {
+#ifndef DOLPHIN
                     vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_DONE);
+#else
+                    if(isp_dev->mmu_enabled && !buf->is_pushed_queue) {
+                        pr_err("buffer not pushed to MTR, invalid state\n");
+                        vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
+                    } else {
+                        vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_DONE);
+                    }
+#endif
                 }
             }
         }
     }
 
+#if DOLPHIN
+    push_bufs(isp_dev, ubuf.pad);
+#endif
     return 0;
 }
 
@@ -399,6 +485,23 @@ static int vvcam_isp_try_ext_ctrls(struct v4l2_subdev *sd,void *arg)
 
     return ret;
 }
+#ifdef DOLPHIN
+static int vvcam_isp_set_format(struct v4l2_subdev *sd, void *arg)
+{
+    int ret = 0;
+    struct vvcam_isp_dev *isp_dev = v4l2_get_subdevdata(sd);
+    struct v4l2_format *f;
+    struct vvcam_pad_set_format *v4l2_format_pad =
+                             (struct vvcam_pad_set_format *)arg;
+    struct vvcam_isp_pad_data *cur_pad = &isp_dev->pad_data[v4l2_format_pad->pad];
+
+    mutex_lock(&isp_dev->ctrl_lock);
+    cur_pad->v4l2_format = v4l2_format_pad->v4l2_format;
+    mutex_unlock(&isp_dev->ctrl_lock);
+    f = &cur_pad->v4l2_format;
+    return ret;
+}
+#endif
 
 static long vvcam_isp_priv_ioctl(struct v4l2_subdev *sd,
                                 unsigned int cmd, void *arg)
@@ -417,6 +520,11 @@ static long vvcam_isp_priv_ioctl(struct v4l2_subdev *sd,
         case VVCAM_PAD_S_STREAM:
             ret = vvcam_isp_pad_s_stream(sd, arg);
             break;
+#ifdef DOLPHIN
+        case VVCAM_PAD_SET_FORMAT:
+            ret = vvcam_isp_set_format(sd, arg);
+            break;
+#endif
         case VVCAM_ISP_IOC_BUFDONE:
             ret = vvcam_isp_buf_done(sd, arg);
             break;
@@ -784,7 +892,7 @@ static int vvcam_isp_pads_init(struct vvcam_isp_dev *isp_dev)
             isp_dev->pad_data[pad].mbus_fmt = vvcam_isp_mp_fmts;
         }
         INIT_LIST_HEAD(&isp_dev->pad_data[pad].queue);
-        spin_lock_init(&isp_dev->pad_data[pad].qlock);
+        mutex_init(&isp_dev->pad_data[pad].q_lock);
     }
 
     return 0;
@@ -893,6 +1001,16 @@ static int vvcam_isp_probe(struct platform_device *pdev)
     pm_runtime_enable(&pdev->dev);
     vvcam_isp_ctrl_init(isp_dev);
 
+#ifdef DOLPHIN
+    isp_bcm_open();
+    /* Create alloc device for creating DMA memory */
+    ret = isp_dma_heap_dev_alloc((isp_dev->alloc_dev));
+    if (ret) {
+        pr_err("%s(): failed to create allocate evice\n", __func__);
+        return ret;
+    }
+#endif
+
     dev_info(&pdev->dev, "vvcam isp driver probe success\n");
 
     return 0;
@@ -920,14 +1038,17 @@ static int vvcam_isp_remove(struct platform_device *pdev)
 
     isp_dev = platform_get_drvdata(pdev);
 
+#ifdef DOLPHIN
+    isp_bcm_close();
+#endif
     vvcam_isp_procfs_unregister(isp_dev->pde);
     v4l2_async_unregister_subdev(&isp_dev->sd);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 16, 0)
                 v4l2_async_nf_unregister(&isp_dev->notifier);
                 v4l2_async_nf_cleanup(&isp_dev->notifier);
 #else
-				v4l2_async_notifier_unregister(&isp_dev->notifier);
-	            v4l2_async_notifier_cleanup(&isp_dev->notifier);
+                v4l2_async_notifier_unregister(&isp_dev->notifier);
+                v4l2_async_notifier_cleanup(&isp_dev->notifier);
 #endif
     media_entity_cleanup(&isp_dev->sd.entity);
     pm_runtime_disable(&pdev->dev);

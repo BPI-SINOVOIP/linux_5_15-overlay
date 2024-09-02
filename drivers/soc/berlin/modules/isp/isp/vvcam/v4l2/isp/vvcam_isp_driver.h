@@ -66,6 +66,7 @@
 
 #define VVCAM_ISP_NAME "vvcam-isp-subdev"
 
+#define MAX_MEMORY_DEVICE       2
 #define VVCAM_ISP_WIDTH_ALIGN 16
 #define VVCAM_ISP_HEIGHT_ALIGN 8
 #define VVCAM_ISP_WIDTH_MIN 32
@@ -99,12 +100,16 @@ struct vvcam_isp_mbus_fmt {
 struct vvcam_isp_pad_data {
 	uint32_t sink_detected;
 	struct v4l2_mbus_framefmt format;
+#ifdef DOLPHIN
+	struct v4l2_format v4l2_format;
+#endif
 	struct v4l2_fract frmival_min;
     struct v4l2_fract frmival_max;
 	uint32_t num_formats;
 	struct vvcam_isp_mbus_fmt *mbus_fmt;
 	struct list_head queue;
-	spinlock_t qlock;
+	//spinlock_t qlock;
+	struct mutex q_lock;
 	uint32_t stream;
 };
 
@@ -155,6 +160,15 @@ struct vvcam_isp_dev {
 	unsigned long pde;
 	struct vvcam_isp_sensor_info sensor_info[VVCAM_ISP_CHN_MAX];
 
+#ifdef DOLPHIN
+	uint8_t mmu_enabled;
+	struct device *alloc_dev[MAX_MEMORY_DEVICE];
+	struct isp_dma_buf *dnr3_buf;
+	struct work_struct  isp_work;
+#endif
 };
 
+#ifdef DOLPHIN
+uint32_t vvcam_isp_get_mtr_path(uint32_t pad_index);
+#endif
 #endif

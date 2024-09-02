@@ -85,7 +85,7 @@ static INT ISPSS_BE_SCL_Init(void)
 	g_isp_be_scl->bcmbufQ.queueCfg.dmaCmdSize = DMA_CMD_BUFFER_SIZE;
 	ISPSS_BCMBUF_QUEUE_Reset(&g_isp_be_scl->bcmbufQ);
 	ISPSS_BCMBUF_QUEUE_Create(&g_isp_be_scl->bcmbufQ);
-	BCM_SCHED_SetMux(BCM_SCHED_Q9, 9);
+	BCM_SchedSetMux(BCM_SCHED_Q9, 9);
 	mutex_init(&g_isp_be_scl->isr_lock);
 
 	return ISPSS_OK;
