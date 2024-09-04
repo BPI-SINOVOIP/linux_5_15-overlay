@@ -11,7 +11,7 @@
 #define __SCALER_DBG_H__
 
 #define MAX_QUEUE_ITEM          120
-#define MAX_SCALER_INSTANCE     3
+#define MAX_SCALER_INSTANCE     4
 
 extern int scaler_debug_on;
 #define scaler_print(arg...)		\

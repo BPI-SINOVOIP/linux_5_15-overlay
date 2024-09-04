@@ -18,7 +18,7 @@
 
 #define SCALER_NAME             "scaler"
 #define MAX_MEMORY_DEVICE       2
-#define SCALER_MAX_INSTANCE     3
+#define SCALER_MAX_INSTANCE     4
 
 /* struct m2m_scaler_ctrls - scaler control set
  * @io_mmu_buffer_output_ctrl:      output buffer is io mmu or not
