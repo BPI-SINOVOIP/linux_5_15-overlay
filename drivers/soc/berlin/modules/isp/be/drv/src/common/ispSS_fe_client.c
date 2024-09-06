@@ -152,6 +152,7 @@ INT ISPSS_FE_WR_CLIENT_ClientConfig(struct BCMBUF *pbcmbuf, INT ChannelID,
 
 	return Ret;
 }
+EXPORT_SYMBOL(ISPSS_FE_WR_CLIENT_ClientConfig);
 
 /*********************************************************************
  * FUNCTION: Get Read client base address
@@ -237,6 +238,7 @@ INT ISPSS_FE_RD_CLIENT_EnableChannelSCLInstance(struct BCMBUF *pbcmbuf, INT Chan
 
 	return Ret;
 }
+EXPORT_SYMBOL(ISPSS_FE_RD_CLIENT_EnableChannelSCLInstance);
 
 /*********************************************************************
  * FUNCTION: Clear Read channel
@@ -278,6 +280,7 @@ INT ISPSS_FE_RD_CLIENT_ClearChannelSCLInstance(struct BCMBUF *pbcmbuf, INT Chann
 
 	return Ret;
 }
+EXPORT_SYMBOL(ISPSS_FE_RD_CLIENT_ClearChannelSCLInstance);
 
 /*********************************************************************
  * FUNCTION: Configure Read client blocks
@@ -378,3 +381,4 @@ INT ISPSS_FE_RD_CLIENT_ClientConfigSCLInstance(struct BCMBUF *pbcmbuf, INT Chann
 
 	return ISPSS_OK;
 }
+EXPORT_SYMBOL(ISPSS_FE_RD_CLIENT_ClientConfigSCLInstance);

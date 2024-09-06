@@ -50,6 +50,7 @@ INT ISPSS_BCMBUF_Create(struct BCMBUF *pbcmbuf, int size)
 
 	return ISPSS_OK;
 }
+EXPORT_SYMBOL(ISPSS_BCMBUF_Create);
 
 /***************************************************************
  * FUNCTION: free register programming buffer
@@ -71,6 +72,7 @@ INT ISPSS_BCMBUF_Destroy(struct BCMBUF *pbcmbuf)
 
 	return ISPSS_OK;
 }
+EXPORT_SYMBOL(ISPSS_BCMBUF_Destroy);
 
 /***************************************************************
  * FUNCTION: reset a register programming buffer
@@ -94,6 +96,7 @@ INT ISPSS_BCMBUF_Reset(struct BCMBUF *pbcmbuf)
 
 	return ISPSS_OK;
 }
+EXPORT_SYMBOL(ISPSS_BCMBUF_Reset);
 
 /*********************************************************
  * FUNCTION: Select sub register programming buffer
@@ -112,6 +115,7 @@ void ISPSS_BCMBUF_Select(struct BCMBUF *pbcmbuf, INT subID)
 
 	pbcmbuf->subID = subID;
 }
+EXPORT_SYMBOL(ISPSS_BCMBUF_Select);
 
 /*********************************************************
  * FUNCTION: write register address (4 bytes) and value (4 bytes) to the buffer
@@ -146,6 +150,7 @@ INT ISPSS_BCMBUF_Write(struct BCMBUF *pbcmbuf, UINT32 address, UINT32 value)
 
 	return ISPSS_OK;
 }
+EXPORT_SYMBOL(ISPSS_BCMBUF_Write);
 
 /*********************************************************
  * FUNCTION: write a block of data to BCM buffer
@@ -178,6 +183,7 @@ INT ISPSS_BCMBUF_WriteBlock(struct BCMBUF *pbcmbuf, UINT64 *pdata, UINT32 length
 
 	return ISPSS_OK;
 }
+EXPORT_SYMBOL(ISPSS_BCMBUF_WriteBlock);
 
 /*********************************************************************
  * FUNCTION: do the hardware transaction
@@ -269,6 +275,7 @@ void ISPSS_BCMBUF_HardwareTrans(struct BCMBUF *pbcmbuf, INT block)
 
 	mutex_unlock(&gBCM_SUBMIT_lock);
 }
+EXPORT_SYMBOL(ISPSS_BCMBUF_HardwareTrans);
 
 static void ISPSS_BCMBUF_Commit_To_CFGQ(int intrType,
 		UINT64 phy_start, UINT32 size, struct DHUB_CFGQ *cfgQ)
@@ -336,6 +343,7 @@ int ISPSS_BCMBUF_To_CFGQ(struct BCMBUF *pbcmbuf, struct DHUB_CFGQ *cfgQ)
 
 	return ISPSS_OK;
 }
+EXPORT_SYMBOL(ISPSS_BCMBUF_To_CFGQ);
 
 /*********************************************************************
  * FUNCTION: send a raw BCM BUF info to a BCM cfgQ
@@ -385,6 +393,7 @@ int ISPSS_CFGQ_To_CFGQ(struct DHUB_CFGQ *src_cfgQ, struct DHUB_CFGQ *cfgQ)
 
 	return ISPSS_OK;
 }
+EXPORT_SYMBOL(ISPSS_CFGQ_To_CFGQ);
 
 /*********************************************************************
  * FUNCTION: commit raw BCMBUF to interrupt service routine
@@ -494,6 +503,18 @@ int ISPSS_BCMDHUB_CFGQ_Commit(struct DHUB_CFGQ *cfgQ, int cpcbID, int intrType, 
 
 	return ret;
 }
+EXPORT_SYMBOL(ISPSS_BCMDHUB_CFGQ_Commit);
+
+int ISPSS_BCMDHUB_AutoPush(int cpcbID, int intrType, int enable)
+{
+	/*trig_event*/
+	unsigned int sched_qid = intrType;
+
+	BCM_SCHED_AutoPushCmd(sched_qid, enable);
+
+	return ISPSS_OK;
+}
+EXPORT_SYMBOL(ISPSS_BCMDHUB_AutoPush);
 
 INT ISPSS_CFGQ_Create(struct DHUB_CFGQ *pCfgQ, int size)
 {
@@ -507,6 +528,7 @@ INT ISPSS_CFGQ_Create(struct DHUB_CFGQ *pCfgQ, int size)
 
 	return ISPSS_OK;
 }
+EXPORT_SYMBOL(ISPSS_CFGQ_Create);
 
 INT ISPSS_CFGQ_Destroy(struct DHUB_CFGQ *pCfgQ)
 {
@@ -517,3 +539,4 @@ INT ISPSS_CFGQ_Destroy(struct DHUB_CFGQ *pCfgQ)
 
 	return ISPSS_EBADCALL;
 }
+EXPORT_SYMBOL(ISPSS_CFGQ_Destroy);

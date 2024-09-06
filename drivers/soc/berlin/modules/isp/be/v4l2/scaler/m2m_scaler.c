@@ -248,7 +248,7 @@ static int m2m_scaler_process_bufs(struct m2m_scaler_ctx *ctx)
 	int ret = 0;
 
 	req = kzalloc(sizeof(*req), GFP_KERNEL);
-	if (!ctx) {
+	if (!req) {
 		ret = -ENOMEM;
 		dev_err(ctx->m2m_scaler_dev->dev, "fails memory for SCALER request\n");
 		goto mem_error;
@@ -1548,21 +1548,21 @@ static int m2m_scaler_probe(struct platform_device *pdev)
 	else
 		scaler->id = pdev->id;
 
-	/* Create alloc device for creating DMA memory */
-	ret = isp_dma_heap_dev_alloc((scaler->alloc_dev));
+	/* Initialize SCALER module */
+	ret = scaler_api_init();
 	if (ret) {
-		pr_err("%s(): failed to create allocate evice\n", __func__);
-		goto memory_init_failed;
+		dev_err(dev, "SCALER init failed %d!!\n", ret);
+		goto err_scaler_fail;
 	}
 
 	/* Debug */
 	scaler_dbg_create(scaler);
 
-	/* Initialize SCALER module */
-	ret = scaler_api_init();
+	/* Create alloc device for creating DMA memory */
+	ret = isp_dma_heap_dev_alloc((scaler->alloc_dev));
 	if (ret) {
-		dev_err(dev, "SCALER init failed!!\n");
-		goto err_scaler_fail;
+		pr_err("%s(): failed to create allocate evice\n", __func__);
+		goto memory_init_failed;
 	}
 
 	/* Register the scaler device with the V4L2 framework */
@@ -1595,11 +1595,11 @@ err_reg_fail:
 err_dev_fail:
 	/* Deinitialize SCALER */
 	scaler_api_deinit();
-err_scaler_fail:
+memory_init_failed:
 	scaler_dbg_remove(scaler);
 	/* Release any memory resources allocated */
 	isp_dma_heap_dev_release();
-memory_init_failed:
+err_scaler_fail:
 	/* Free allocated memory for the scaler device structure */
 	mutex_destroy(&scaler->lock);
 	devm_kfree(dev, scaler);

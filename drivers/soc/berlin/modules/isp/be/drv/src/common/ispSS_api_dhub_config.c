@@ -13,7 +13,9 @@
 		+ RA_IspMISC_interrupt + RA_Interrupt_BcmInvalidAddr)
 
 struct HDL_dhub2d ISPSS_TSB_dhubHandle;
+EXPORT_SYMBOL(ISPSS_TSB_dhubHandle);
 struct HDL_dhub2d ISPSS_FWR_dhubHandle;
+EXPORT_SYMBOL(ISPSS_FWR_dhubHandle);
 
 #define ISPSS_CMDSZ_64  64
 #define ISPSS_CMDSZ_128 128

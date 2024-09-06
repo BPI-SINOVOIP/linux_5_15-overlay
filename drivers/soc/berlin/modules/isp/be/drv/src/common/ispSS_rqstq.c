@@ -30,6 +30,7 @@ void isp_rqstq_reset(struct ISP_REQUEST_QUEUE *request_queue)
 	/* reset frame pointers to NULL in frame queue */
 	GaloisMemSet(request_queue->request_descrs, 0, sizeof(void *)*MAX_NUM_FRAMES);
 }
+EXPORT_SYMBOL(isp_rqstq_reset);
 
 /*********************************************************
  * FUNCTION: push a frame descriptor into frame queue
@@ -61,6 +62,7 @@ int isp_rqstq_push(struct ISP_REQUEST_QUEUE *request_queue, void *request_descr)
 
 	return 1;
 }
+EXPORT_SYMBOL(isp_rqstq_push);
 
 /******************************************************************
  * FUNCTION: pop a frame descriptor out of a frame queue
@@ -85,6 +87,7 @@ int isp_rqstq_pop(struct ISP_REQUEST_QUEUE *request_queue, void **request_descr)
 
 	return 1;
 }
+EXPORT_SYMBOL(isp_rqstq_pop);
 
 /******************************************************************
  * FUNCTION: commit previous pop operation
@@ -111,6 +114,7 @@ int isp_rqstq_pop_commit(struct ISP_REQUEST_QUEUE *request_queue)
 
 	return 1;
 }
+EXPORT_SYMBOL(isp_rqstq_pop_commit);
 
 /******************************************************************
  * FUNCTION: Get the number of request pending in the queue
@@ -121,6 +125,7 @@ int isp_rqstq_get_count(struct ISP_REQUEST_QUEUE *request_queue)
 {
 	return request_queue->count;
 }
+EXPORT_SYMBOL(isp_rqstq_get_count);
 
 /*********************************************************
  * FUNCTION: push a frame descriptor into frame queue
@@ -151,6 +156,7 @@ int isp_rqstq_push_shadow(struct ISP_REQUEST_QUEUE *request_queue, void *request
 
 	return 1;
 }
+EXPORT_SYMBOL(isp_rqstq_push_shadow);
 
 /******************************************************************
  * FUNCTION: commit previous push shadow operation
@@ -177,3 +183,26 @@ int isp_rqstq_push_shadow_commit(struct ISP_REQUEST_QUEUE *request_queue)
 
 	return 1;
 }
+EXPORT_SYMBOL(isp_rqstq_push_shadow_commit);
+
+/******************************************************************
+ * FUNCTION: retrieve uncommitted frame descriptor pushed into frame queue
+ *           i.e. read from the tail instead of head
+ * PARAMS: *request_queue - pointer to a frame queue
+ *         **request_descr - pointer to the frame descriptor
+ * RETURN: 1 - succeed
+ *         0 - command queue is empty, no command is available
+ * NOTE: use pop_commit to actually update head pointer.
+ *****************************************************************/
+int isp_rqstq_pop_shadow(struct ISP_REQUEST_QUEUE *request_queue, void **request_descr)
+{
+	/* first check whether frame is temporariy pushed*/
+	if (request_queue->tail == request_queue->shadow_tail)
+		return 0;
+
+	/* pop a frame descriptor from frame queue if some uncommitted frame is pushed*/
+	*request_descr = request_queue->request_descrs[request_queue->tail];
+
+	return 1;
+}
+EXPORT_SYMBOL(isp_rqstq_pop_shadow);

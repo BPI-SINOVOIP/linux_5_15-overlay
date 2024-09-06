@@ -86,8 +86,21 @@ static struct isp_dma_heap_dev *alloc_memdev(const char *heap_name,
 		return NULL;
 	}
 
-	list_add(&memdev->link, &isp_dma_heap_memdevs);
+	list_add_tail(&memdev->link, &isp_dma_heap_memdevs);
 	return memdev;
+}
+
+static void get_dma_heap_device(struct device **pdev)
+{
+	int count = 0;
+	struct list_head *cur;
+	struct isp_dma_heap_dev *memdev;
+
+	list_for_each(cur, &isp_dma_heap_memdevs) {
+		memdev = list_entry(cur, struct isp_dma_heap_dev, link);
+		pdev[count++] = &memdev->dev;
+	}
+
 }
 
 int isp_dma_heap_dev_alloc(struct device **pdev)
@@ -102,6 +115,7 @@ int isp_dma_heap_dev_alloc(struct device **pdev)
 		return ret;
 
 	if (isp_dma_heap_memdev_init) {
+		get_dma_heap_device(pdev);
 		mutex_unlock(&isp_dma_heap_mutex);
 		return 0;
 	}
@@ -730,3 +744,6 @@ void *isp_dma_heap_get_pagetbl_phyaddr(void *handle)
 EXPORT_SYMBOL_GPL(isp_dma_heap_get_pagetbl_phyaddr);
 
 MODULE_IMPORT_NS(SYNA_BM);
+MODULE_AUTHOR("Synaptics");
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("DMA Heap memory driver");

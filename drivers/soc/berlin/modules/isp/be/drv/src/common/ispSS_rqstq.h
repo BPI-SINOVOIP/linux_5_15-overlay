@@ -113,4 +113,16 @@ int isp_rqstq_push_shadow(struct ISP_REQUEST_QUEUE *request_queue, void *request
  *         0 - command queue is empty, no command is available
  *****************************************************************/
 int isp_rqstq_push_shadow_commit(struct ISP_REQUEST_QUEUE *request_queue);
+
+/******************************************************************
+ * FUNCTION: retrieve uncommitted frame descriptor pushed into frame queue
+ *           i.e. read from the tail instead of head
+ * PARAMS: *request_queue - pointer to a frame queue
+ *         **request_descr - pointer to the frame descriptor
+ * RETURN: 1 - succeed
+ *         0 - command queue is empty, no command is available
+ * NOTE: use pop_commit to actually update head pointer.
+ *****************************************************************/
+int isp_rqstq_pop_shadow(struct ISP_REQUEST_QUEUE *request_queue, void **request_descr);
+
 #endif

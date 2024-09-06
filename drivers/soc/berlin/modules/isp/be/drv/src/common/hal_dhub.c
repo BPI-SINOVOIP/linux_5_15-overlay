@@ -1061,7 +1061,7 @@ void dhub2d_channel_clear(void *hdl, SIGN32 id)
 }
 
 /******************************************************************
- * Function: dhub2nd_channel_cfg
+ * Function: ispss_dhub2nd_channel_cfg
  * Description: Configurate a dHub2ND channel.
  * void *hdl - Handle to HDL_dhub2d
  * SIGN32 id - Channel ID in $dHubReg2D
@@ -1070,7 +1070,7 @@ void dhub2d_channel_clear(void *hdl, SIGN32 id)
  *                receive programming sequence in (adr,data) pairs
  * Return: UNSG32 Number of (adr,pair) added to cfgQ
  *******************************************************************/
-UNSG32 dhub2nd_channel_cfg(
+UNSG32 ispss_dhub2nd_channel_cfg(
 		void	*hdl,		/*! Handle to HDL_dhub2d !*/
 		SIGN32	id,			/*! Channel ID in $dHubReg2D !*/
 		UNSG32	addr,		/*! CMD: 2ND-buffer address !*/
@@ -1092,6 +1092,7 @@ UNSG32 dhub2nd_channel_cfg(
 	T32dHubChannel_ROB_MAP stdHubChannelRob_Map;
 
 	a = dhub2d->ra + RA_dHubReg2D_ARR_2ND + id*sizeof(SIE_dHubCmd2ND);
+
 	IO32CFG(cfgQ, j, a + RA_dHubCmd2ND_START, 0);
 
 	stdHubChannelRob_Map.u32 = 0;
@@ -1135,26 +1136,31 @@ UNSG32 dhub2nd_channel_cfg(
 	IO32CFG(cfgQ, j, a + RA_dHubCmd2ND_DESC, cmd.u32dHubCmd2ND_DESC);
 
 	memset(&cmd, 0, sizeof(SIE_dHubCmd2ND));
+	cmd.u32dHubCmd2ND_DESC_1D_ST = 0;
 	cmd.uDESC_1D_ST_step = step1;
 	IO32CFG(cfgQ, j, a + RA_dHubCmd2ND_DESC_1D_ST, cmd.u32dHubCmd2ND_DESC_1D_ST);
 
 	memset(&cmd, 0, sizeof(SIE_dHubCmd2ND));
+	cmd.u32dHubCmd2ND_DESC_1D_SZ = 0;
 	cmd.uDESC_1D_SZ_size = size1;
 	IO32CFG(cfgQ, j, a + RA_dHubCmd2ND_DESC_1D_SZ, cmd.u32dHubCmd2ND_DESC_1D_SZ);
 
 	memset(&cmd, 0, sizeof(SIE_dHubCmd2ND));
+	cmd.u32dHubCmd2ND_DESC_2D_ST = 0;
 	cmd.uDESC_2D_ST_step = step2;
 	IO32CFG(cfgQ, j, a + RA_dHubCmd2ND_DESC_2D_ST, cmd.u32dHubCmd2ND_DESC_2D_ST);
 
 	memset(&cmd, 0, sizeof(SIE_dHubCmd2ND));
+	cmd.u32dHubCmd2ND_DESC_2D_SZ = 0;
 	cmd.uDESC_2D_SZ_size = size2;
 	IO32CFG(cfgQ, j, a + RA_dHubCmd2ND_DESC_2D_SZ, cmd.u32dHubCmd2ND_DESC_2D_SZ);
 
 	IO32CFG(cfgQ, j, a + RA_dHubCmd2ND_START, enable);
 
 	return j;
-	/**	ENDOFFUNCTION: dhub2nd_channel_cfg **/
+	/**	ENDOFFUNCTION: ispss_dhub2nd_channel_cfg **/
 }
+EXPORT_SYMBOL(ispss_dhub2nd_channel_cfg);
 
 /********************************************************************************
  * Function: dhub2nd_channel_enable
@@ -1405,6 +1411,7 @@ void BCM_SCHED_GetFullSts(UNSG32 QID, UNSG32 *FullSts)
 	else
 		*FullSts = 0;
 }
+EXPORT_SYMBOL(BCM_SCHED_GetFullSts);
 
 void BCM_SCHED_Flush(void)
 {

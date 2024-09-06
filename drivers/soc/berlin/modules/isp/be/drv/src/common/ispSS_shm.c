@@ -51,7 +51,7 @@ static void shm_release(struct device *dev)
 /*********************************************/
 /*         APIs for all SHM                  */
 /*********************************************/
-int ispSS_SHM_Init(void)
+int ispSS_SHM_Init(struct device *dev)
 {
 	int ret = 0;
 	const char *cma_heap_name = "CMA-CUST-reserved";
@@ -64,7 +64,7 @@ int ispSS_SHM_Init(void)
 		goto lock_fail;
 	}
 
-	ispSS_shm_data = kzalloc(sizeof(struct ispSS_shm_data), GFP_KERNEL);
+	ispSS_shm_data = devm_kzalloc(dev, sizeof(struct ispSS_shm_data), GFP_KERNEL);
 	if (!ispSS_shm_data) {
 		ret = -ENOMEM;
 		goto mem_fail;
@@ -98,7 +98,7 @@ lock_fail:
 	return ret;
 }
 
-int ispSS_SHM_Deinit(void)
+int ispSS_SHM_Deinit(struct device *dev)
 {
 	int ret = 0;
 
@@ -111,7 +111,7 @@ int ispSS_SHM_Deinit(void)
 	}
 
 	put_device(&ispSS_shm_data->mem_device);
-	kfree(ispSS_shm_data);
+	devm_kfree(dev, ispSS_shm_data);
 	ispSS_shm_data = NULL;
 
 	mutex_unlock(&ispSS_shm_mutex);
@@ -222,6 +222,7 @@ failed_lock:
 	*phShm = (SHM_HANDLE) NULL;
 	return ret;
 }
+EXPORT_SYMBOL(ispSS_SHM_Allocate);
 
 int ispSS_SHM_Release(SHM_HANDLE phShm)
 {
@@ -263,6 +264,7 @@ non_zero_ref:
 lock_fail:
 	return ret;
 }
+EXPORT_SYMBOL(ispSS_SHM_Release);
 
 int ispSS_SHM_CleanCache(SHM_HANDLE phShm, unsigned int offset, unsigned int size)
 {
@@ -279,6 +281,7 @@ int ispSS_SHM_CleanCache(SHM_HANDLE phShm, unsigned int offset, unsigned int siz
 out:
 	return ret;
 }
+EXPORT_SYMBOL(ispSS_SHM_CleanCache);
 
 int ispSS_SHM_GetVirtualAddress(SHM_HANDLE phShm, int uiOffset, void **pVirtAddr)
 {
@@ -295,6 +298,7 @@ int ispSS_SHM_GetVirtualAddress(SHM_HANDLE phShm, int uiOffset, void **pVirtAddr
 out:
 	return ret;
 }
+EXPORT_SYMBOL(ispSS_SHM_GetVirtualAddress);
 
 int ispSS_SHM_GetPhysicalAddress(SHM_HANDLE phShm, int uiOffset, void **pPhyAddr)
 {
@@ -311,3 +315,4 @@ int ispSS_SHM_GetPhysicalAddress(SHM_HANDLE phShm, int uiOffset, void **pPhyAddr
 out:
 	return ret;
 }
+EXPORT_SYMBOL(ispSS_SHM_GetPhysicalAddress);

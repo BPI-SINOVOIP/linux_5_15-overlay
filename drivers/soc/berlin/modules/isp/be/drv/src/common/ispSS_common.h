@@ -53,11 +53,11 @@
 
 #ifdef DISABLE_BCM_ENGINE
 #define START_2NDDMA(dhubID, dmaID, start_addr, burst, step1, size1, step2, size2, cfgQ) \
-		dhub2nd_channel_cfg((struct HDL_dhub2d *)dhubID, dmaID, start_addr, burst, \
+		ispss_dhub2nd_channel_cfg((struct HDL_dhub2d *)dhubID, dmaID, start_addr, burst, \
 		step1, size1, step2, size2, 0, 0, 0, 1, NULL)
 #define START_2NDDMA_MTRR(dhubID, dmaID, start_addr, burst, step1, size1, step2, \
 		size2, chkSemId, updSemId, cfgQ) \
-		dhub2nd_channel_cfg((struct HDL_dhub2d *)dhubID, dmaID, start_addr, burst, \
+		ispss_dhub2nd_channel_cfg((struct HDL_dhub2d *)dhubID, dmaID, start_addr, burst, \
 		step1, size1, step2, size2, chkSemId, updSemId, 0, 1, NULL)
 #define CLEAR_2NDDMA(dhubID, dmaID, bcmbuf) \
 	do { \
@@ -66,12 +66,12 @@
 	} while (0)
 #else
 #define START_2NDDMA(dhubID, dmaID, start_addr, burst, step1, size1, step2, size2, cfgQ) \
-		dhub2nd_channel_cfg((struct HDL_dhub2d *)dhubID, dmaID, start_addr, burst, \
+		ispss_dhub2nd_channel_cfg((struct HDL_dhub2d *)dhubID, dmaID, start_addr, burst,\
 		step1, size1, step2, size2, 0, 0, 0, 1, cfgQ)
 #define START_2NDDMA_MTRR(dhubID, dmaID, start_addr, burst, step1, size1, step2, \
 		size2, chkSemId, updSemId, cfgQ) \
-		dhub2nd_channel_cfg((struct HDL_dhub2d *)dhubID, dmaID, start_addr, burst, step1, \
-		size1, step2, size2, chkSemId, updSemId, 0, 1, cfgQ)
+		ispss_dhub2nd_channel_cfg((struct HDL_dhub2d *)dhubID, dmaID, start_addr, burst,\
+		step1, size1, step2, size2, chkSemId, updSemId, 0, 1, cfgQ)
 #define CLEAR_2NDDMA(dhubID, dmaID, bcmbuf) \
 	do { \
 		dhub2nd_channel_clear_seq(dhubID, dmaID); \

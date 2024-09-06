@@ -13,6 +13,8 @@
 #include "ispSS_bcmbuf_queue.h"
 #include "ispSS_shm.h"
 
+#define ISPSS_GET_BCMBUF(RQST) (RQST->pBcmBuf)
+
 /*ISP supported Rotations*/
 enum ISP_ENUM_ROTATION {
 	ISPBE_ROTATION_MIN    = 0,

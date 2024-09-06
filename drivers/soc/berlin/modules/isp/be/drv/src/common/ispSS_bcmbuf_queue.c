@@ -184,6 +184,7 @@ eCreateBcmQueue:
 
 	return iResult;
 }
+EXPORT_SYMBOL(ISPSS_BCMBUF_QUEUE_Create);
 
 /***************************************************************
  * FUNCTION: free register programming buffer queue
@@ -208,6 +209,7 @@ int ISPSS_BCMBUF_QUEUE_Destroy(struct ISPSS_BCMBUF_QUEUE *pBcmBufQueue)
 
 	return ISPSS_OK;
 }
+EXPORT_SYMBOL(ISPSS_BCMBUF_QUEUE_Destroy);
 
 /*************************************************
  * FUNCTION: reset bcmbuf queue to be empty state
@@ -219,6 +221,7 @@ void ISPSS_BCMBUF_QUEUE_Reset(struct ISPSS_BCMBUF_QUEUE *pBcmBufQueue)
 {
 	isp_rqstq_reset(&(pBcmBufQueue->bcmbufQueue));
 }
+EXPORT_SYMBOL(ISPSS_BCMBUF_QUEUE_Reset);
 
 /*********************************************************
  * FUNCTION: push a bcmbuf into bcmbuf queue
@@ -236,6 +239,7 @@ int ISPSS_BCMBUF_QUEUE_push(struct ISPSS_BCMBUF_QUEUE *pBcmBufQueue,
 
 	return iResult;
 }
+EXPORT_SYMBOL(ISPSS_BCMBUF_QUEUE_push);
 
 /******************************************************************
  * FUNCTION: pop a bcmbuf out of a bcmbuf queue
@@ -297,6 +301,7 @@ int ISPSS_BCMBUF_QUEUE_pop_and_commit(struct ISPSS_BCMBUF_QUEUE *pBcmBufQueue,
 
 	return iResult;
 }
+EXPORT_SYMBOL(ISPSS_BCMBUF_QUEUE_pop_and_commit);
 
 /*********************************************************
  * FUNCTION: selest BCM sub-buffer to use
@@ -317,3 +322,4 @@ void ISPSS_BCMBUF_QUEUE_Element_Select(struct ISPSS_BCMBUF_QUEUE *pBcmBufQueue,
 	for (i = 0; i < pBcmBufQueue->queueCfg.maxDhubCfgQ; i++)
 		pBcmBufQueueElement->pCfgQ[i].len = 0;
 }
+EXPORT_SYMBOL(ISPSS_BCMBUF_QUEUE_Element_Select);

@@ -843,3 +843,4 @@ void ISPSS_BE_DNSCL3_Probe(struct ISPBE_CA_DRV_CTX *drv_ctx)
 	drv_ctx->fops.module_GetNoOfFramesWaiting = ISPSS_BE_DNSCL_GetNoOfFramesWaiting;
 	drv_ctx->sem_id = ISP_DHUBSEM_TSB_Scldn_intr1;
 }
+EXPORT_SYMBOL(ISPSS_BE_DNSCL3_Probe);

@@ -146,7 +146,8 @@ INT ISPBE_CA_DeInitialize(void);
 INT ISPSS_CA_RegisterInterruptCallback(enum ISP_DHUBSEM_TSB DhubSem_Id,
 			struct ISPBE_DRIVER_CB *intr_cb);
 INT ISPSS_CA_UnRegisterInterruptCallback(enum ISP_DHUBSEM_TSB DhubSem_Id);
-INT ISPBE_MODULE_Init(enum ISPBE_MODULES module);
+INT ISPBE_MODULE_Init(enum ISPBE_MODULES module, struct ISPBE_CA_DRV_CTX module_ctx,
+		ispbe_client_cb_t client_cb);
 INT ISPBE_MODULE_Destroy(enum ISPBE_MODULES module);
 INT ISPBE_MODULE_Open(enum ISPBE_MODULES module, INT *clientID,
 		INT priority, ispbe_client_cb_t client_cb);
@@ -160,6 +161,6 @@ INT ISPBE_MODULE_ReleaseRequest(enum ISPBE_MODULES module,
 		INT iClientId, struct ISP_BE_RQST_MSG **pstRqstMsg);
 INT ISPBE_MODULE_GetNoOfFramesWaiting(enum ISPBE_MODULES module,
 		INT iClientId, UINT32 *puiFramesWaiting);
-INT ISPBE_CA_LoadMatrix(char *cfgFile, char *lutFile, int sensorId);
+void ISPSS_CA_ClockGateSharedResources(BOOL state);
 
 #endif

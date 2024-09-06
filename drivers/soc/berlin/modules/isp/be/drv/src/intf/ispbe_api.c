@@ -134,12 +134,7 @@ static int ISPBE_ISR_Handler_Task(void)
 	return 0;
 }
 
-static void ISPBE_CA_probe(void)
-{
-	ISPSS_BE_DNSCL3_Probe(&g_ispbe_ca_ctx.drv_ctx[ISPBE_MODULE_DNSCL3]);
-}
-
-static void ISPSS_CA_ClockGateSharedResources(BOOL state)
+void ISPSS_CA_ClockGateSharedResources(BOOL state)
 {
 	struct ISPBE_CA_CLKGT_CTX *clkgate_ctx = NULL;
 
@@ -170,6 +165,7 @@ static void ISPSS_CA_ClockGateSharedResources(BOOL state)
 	}
 	mutex_unlock(&clkgate_ctx->ispbe_clkgate_mutex);
 }
+EXPORT_SYMBOL(ISPSS_CA_ClockGateSharedResources);
 
 INT ISPBE_CA_Initialize(void)
 {
@@ -199,9 +195,6 @@ INT ISPBE_CA_Initialize(void)
 
 	/* Initialize BCM */
 	ISPSS_BCMBUF_Init();
-
-	/* Initialize driver API's calls */
-	ISPBE_CA_probe();
 
 	/* Create ISR Handler task */
 	g_ispbe_ca_ctx.isrTaskExitFlag = 0;
@@ -241,14 +234,15 @@ INT ISPBE_CA_DeInitialize(void)
 	return 0;
 }
 
-INT ISPBE_MODULE_Init(enum ISPBE_MODULES module)
+INT ISPBE_MODULE_Init(enum ISPBE_MODULES module, struct ISPBE_CA_DRV_CTX module_ctx,
+		ispbe_client_cb_t client_cb)
 {
 	HRESULT Ret = S_OK;
 	struct ISPBE_CA_DRV_CTX *drv_ctx;
 	struct ISPBE_CA_CLKGT_CTX *clkgate_ctx = NULL;
 
 	if (!g_ispbe_ca_ctx.is_created)
-		return -1;
+		return -EPROBE_DEFER;
 
 	if (!IS_VALID_MODULE(module))
 		return ISPSS_INVALID_MODULE;
@@ -256,32 +250,35 @@ INT ISPBE_MODULE_Init(enum ISPBE_MODULES module)
 	drv_ctx = &g_ispbe_ca_ctx.drv_ctx[module];
 	clkgate_ctx = &g_ispbe_ca_ctx.clkgate_ctx;
 
+	memcpy(&drv_ctx->fops, &module_ctx.fops, sizeof(struct ISPBE_DRIVER_OPS));
+	drv_ctx->sem_id = module_ctx.sem_id;
+
 	if (drv_ctx->fops.module_init != NULL) {
 		Ret = drv_ctx->fops.module_init();
 
 		if (module == ISPBE_MODULE_TILER) {
 			mutex_lock(&clkgate_ctx->ispbe_clkgate_mutex);
-			if (clkgate_ctx->ispbe_clkgate_shared_refcnt == 0) {
-				ISPSS_CLKRST_ISPMiscModuleSetClockGateState(ISPMISC_MODULE_BCM,
-						ISPSS_CLKRST_CLK_STATE_ENABLE);
-				ISPSS_CLKRST_ISPMiscModuleSetClockGateState(ISPMISC_MODULE_DHUB_TSB,
-						ISPSS_CLKRST_CLK_STATE_ENABLE);
-			}
+			//TODO verify with tiler
+			ISPSS_CA_ClockGateSharedResources(1);
 			if (clkgate_ctx->ispbe_clkgate_module_refcnt[module] == 0) {
 				ISPSS_CLKRST_ISPBeModuleSetClockGateState(module,
 						ISPSS_CLKRST_CLK_STATE_ENABLE);
 				Ret = ispss_enable_dhub_sem_intr(drv_ctx->sem_id, 1);
 			}
-			clkgate_ctx->ispbe_clkgate_shared_refcnt++;
 			clkgate_ctx->ispbe_clkgate_module_refcnt[module] += 1;
 			mutex_unlock(&clkgate_ctx->ispbe_clkgate_mutex);
+
+			//TODO Fix Client ID ?
+			drv_ctx->client_cb[0] = client_cb;
 		}
 	} else {
+		pr_err("%s: module_init fops doesn't exist !!\n", __func__);
 		Ret = ISPSS_EBADCALL;
 	}
 
 	return Ret;
 }
+EXPORT_SYMBOL(ISPBE_MODULE_Init);
 
 INT ISPBE_MODULE_Destroy(enum ISPBE_MODULES module)
 {
@@ -309,17 +306,8 @@ INT ISPBE_MODULE_Destroy(enum ISPBE_MODULES module)
 				ISPSS_CLKRST_ISPBeModuleSetClockGateState(module,
 						ISPSS_CLKRST_CLK_STATE_DISABLE);
 			}
-			if (clkgate_ctx->ispbe_clkgate_shared_refcnt > 0)
-				clkgate_ctx->ispbe_clkgate_shared_refcnt -= 1;
-			if (clkgate_ctx->ispbe_clkgate_shared_refcnt == 0) {
-				ISPSS_CLKRST_ISPMiscModuleSetClockGateState(ISPMISC_MODULE_DHUB_FWR,
-						ISPSS_CLKRST_CLK_STATE_DISABLE);
-				ISPSS_CLKRST_ISPMiscModuleSetClockGateState(ISPMISC_MODULE_DHUB_TSB,
-						ISPSS_CLKRST_CLK_STATE_DISABLE);
-				ISPSS_CLKRST_ISPMiscModuleSetClockGateState(ISPMISC_MODULE_BCM,
-						ISPSS_CLKRST_CLK_STATE_DISABLE);
-			}
 			mutex_unlock(&clkgate_ctx->ispbe_clkgate_mutex);
+			ISPSS_CA_ClockGateSharedResources(0);
 		}
 	} else {
 		Ret = ISPSS_EBADCALL;
@@ -327,6 +315,7 @@ INT ISPBE_MODULE_Destroy(enum ISPBE_MODULES module)
 
 	return Ret;
 }
+EXPORT_SYMBOL(ISPBE_MODULE_Destroy);
 
 INT ISPBE_MODULE_Open(enum ISPBE_MODULES module, INT *clientID,
 					INT priority, ispbe_client_cb_t client_cb)
@@ -349,22 +338,15 @@ INT ISPBE_MODULE_Open(enum ISPBE_MODULES module, INT *clientID,
 		if (Ret == S_OK)
 			drv_ctx->client_cb[*clientID] = client_cb;
 
-		mutex_lock(&clkgate_ctx->ispbe_clkgate_mutex);
-		if (clkgate_ctx->ispbe_clkgate_shared_refcnt == 0) {
-			ISPSS_CLKRST_ISPMiscModuleSetClockGateState(ISPMISC_MODULE_BCM,
-					ISPSS_CLKRST_CLK_STATE_ENABLE);
-			ISPSS_CLKRST_ISPMiscModuleSetClockGateState(ISPMISC_MODULE_DHUB_TSB,
-					ISPSS_CLKRST_CLK_STATE_ENABLE);
-			ISPSS_CLKRST_ISPMiscModuleSetClockGateState(ISPMISC_MODULE_DHUB_FWR,
-					ISPSS_CLKRST_CLK_STATE_ENABLE);
-		}
+		ISPSS_CA_ClockGateSharedResources(1);
 
+		mutex_lock(&clkgate_ctx->ispbe_clkgate_mutex);
 		if (clkgate_ctx->ispbe_clkgate_module_refcnt[module] == 0) {
 			ISPSS_CLKRST_ISPBeModuleSetClockGateState(module,
 					ISPSS_CLKRST_CLK_STATE_ENABLE);
 			Ret = ispss_enable_dhub_sem_intr(drv_ctx->sem_id, 1);
 		}
-		clkgate_ctx->ispbe_clkgate_shared_refcnt++;
+
 		clkgate_ctx->ispbe_clkgate_module_refcnt[module] += 1;
 		mutex_unlock(&clkgate_ctx->ispbe_clkgate_mutex);
 
@@ -373,6 +355,7 @@ INT ISPBE_MODULE_Open(enum ISPBE_MODULES module, INT *clientID,
 
 	return Ret;
 }
+EXPORT_SYMBOL(ISPBE_MODULE_Open);
 
 INT ISPBE_MODULE_Close(enum ISPBE_MODULES module, INT clientID)
 {
@@ -400,28 +383,19 @@ INT ISPBE_MODULE_Close(enum ISPBE_MODULES module, INT clientID)
 		if (clkgate_ctx->ispbe_clkgate_module_refcnt[module] > 0)
 			clkgate_ctx->ispbe_clkgate_module_refcnt[module] -= 1;
 
-		if (clkgate_ctx->ispbe_clkgate_shared_refcnt > 0)
-			clkgate_ctx->ispbe_clkgate_shared_refcnt -= 1;
-
 		if (clkgate_ctx->ispbe_clkgate_module_refcnt[module] == 0) {
 			Ret = ispss_enable_dhub_sem_intr(drv_ctx->sem_id, 0);
 			ISPSS_CLKRST_ISPBeModuleSetClockGateState(module,
 					ISPSS_CLKRST_CLK_STATE_DISABLE);
 		}
-		if (clkgate_ctx->ispbe_clkgate_shared_refcnt == 0) {
-			ISPSS_CLKRST_ISPMiscModuleSetClockGateState(ISPMISC_MODULE_DHUB_FWR,
-					ISPSS_CLKRST_CLK_STATE_DISABLE);
-			ISPSS_CLKRST_ISPMiscModuleSetClockGateState(ISPMISC_MODULE_DHUB_TSB,
-					ISPSS_CLKRST_CLK_STATE_DISABLE);
-			ISPSS_CLKRST_ISPMiscModuleSetClockGateState(ISPMISC_MODULE_BCM,
-					ISPSS_CLKRST_CLK_STATE_DISABLE);
-		}
 		mutex_unlock(&clkgate_ctx->ispbe_clkgate_mutex);
+		ISPSS_CA_ClockGateSharedResources(0);
 	} else
 		Ret = ISPSS_EBADCALL;
 
 	return Ret;
 }
+EXPORT_SYMBOL(ISPBE_MODULE_Close);
 
 INT ISPBE_MODULE_PushRequest(enum ISPBE_MODULES module, INT clientID,
 				struct ISP_BE_RQST_MSG *pstRqstMsg)
@@ -447,6 +421,7 @@ INT ISPBE_MODULE_PushRequest(enum ISPBE_MODULES module, INT clientID,
 
 	return Ret;
 }
+EXPORT_SYMBOL(ISPBE_MODULE_PushRequest);
 
 /* Don't we need client ID, even though output Q is same for all clients ?*/
 INT ISPBE_MODULE_PopRequest(enum ISPBE_MODULES module, INT clientID,
@@ -492,6 +467,28 @@ INT ISPBE_MODULE_ReleaseRequest(enum ISPBE_MODULES module, INT iClientId,
 
 	return Ret;
 }
+
+INT ISPBE_MODULE_Ioctl(enum ISPBE_MODULES module, enum ISP_BE_IOCTL_CMD ioctl_cmd, void *param)
+{
+	HRESULT Ret = S_OK;
+	struct ISPBE_CA_DRV_CTX *drv_ctx;
+
+	if (!g_ispbe_ca_ctx.is_created)
+		return -1;
+
+	if (!IS_VALID_MODULE(module))
+		return ISPSS_INVALID_MODULE;
+
+	drv_ctx = &g_ispbe_ca_ctx.drv_ctx[module];
+
+	if (drv_ctx->fops.module_ioctl != NULL)
+		Ret = drv_ctx->fops.module_ioctl(ioctl_cmd, param);
+	else
+		Ret = ISPSS_EBADCALL;
+
+	return Ret;
+}
+EXPORT_SYMBOL(ISPBE_MODULE_Ioctl);
 
 INT ISPBE_MODULE_GetNoOfFramesWaiting(enum ISPBE_MODULES module,
 			INT iClientId, UINT32 *puiFramesWaiting)

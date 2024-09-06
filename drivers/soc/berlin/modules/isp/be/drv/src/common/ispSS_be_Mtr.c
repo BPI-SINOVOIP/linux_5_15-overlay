@@ -173,6 +173,8 @@ UINT32 ISPSS_BE_MTR_Set_Global_Registers(int path, int enable)
 	}
 	return uiRetVal;
 }
+EXPORT_SYMBOL(ISPSS_BE_MTR_Set_Global_Registers);
+
 /***************************************************************************************
  * FUNCTION: Set global registers for MTR
  * PARAMS:   ispObj - Scl object
@@ -231,6 +233,7 @@ UINT32 ISPSS_BE_MTR_Set_Global_Registers_bcm(struct BCMBUF *pbcmbuf, int path)
 	}
 	return uiRetVal;
 }
+EXPORT_SYMBOL(ISPSS_BE_MTR_Set_Global_Registers_bcm);
 
 /***************************************************************************************
  * FUNCTION: Return MMU cache base and ways details
@@ -615,6 +618,7 @@ UINT32 ISPSS_BE_MTR_kickOff(struct BCMBUF *pbcmbuf, UINT32 kickOff)
 
 	return uiRetVal;
 }
+EXPORT_SYMBOL(ISPSS_BE_MTR_kickOff);
 
 /***************************************************************************************
  * FUNCTION:Return thread IDs for Luma and croma
@@ -959,6 +963,7 @@ void ISPSS_BE_MTR_UpdateDesc(struct BCMBUF *pbcmbuf, struct ISPSS_BE_MTR *psIspm
 	else
 		ISPSS_BE_MTR_UpdateWriteDesc(pbcmbuf, psIspmtr, path);
 }
+EXPORT_SYMBOL(ISPSS_BE_MTR_UpdateDesc);
 
 /***************************************************************************************
  * FUNCTION: Set global registers for MTR for Scaler
@@ -981,3 +986,4 @@ UINT32 ISPSS_BE_MTR_Set_Dhub_Channel_Scaling(struct BCMBUF *pbcmbuf,
 	ISPSS_REG_READ32(ispTsbFlagReg, &uiRetVal);
 	return uiRetVal;
 }
+EXPORT_SYMBOL(ISPSS_BE_MTR_Set_Dhub_Channel_Scaling);

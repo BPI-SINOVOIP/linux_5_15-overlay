@@ -12,6 +12,8 @@
 #include "ispbe_api.h"
 
 void ISPSS_BE_DNSCL3_Probe(struct ISPBE_CA_DRV_CTX *drv_ctx);
+void ISPSS_BE_TILER_Probe(struct ISPBE_CA_DRV_CTX *drv_ctx);
+void ISPSS_BE_DEWARP_Probe(struct ISPBE_CA_DRV_CTX *drv_ctx);
 
 #define DNS_INPUT_FMT_NUM        8
 #define DNS_OUTPUT_FMT_NUM       8

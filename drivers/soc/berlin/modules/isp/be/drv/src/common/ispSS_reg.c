@@ -50,6 +50,7 @@ UNSG64 ispss_devmem_phy_to_virt(UNSG32 uPhyAddr)
 			uPhyAddr, ispss_reg_base_virt_addr);
 	return 0;
 }
+EXPORT_SYMBOL(ispss_devmem_phy_to_virt);
 
 void ispss_write_phys_reg(UNSG32 uPhyAddr, UNSG32 val)
 {
@@ -61,6 +62,7 @@ void ispss_write_phys_reg(UNSG32 uPhyAddr, UNSG32 val)
 	}
 	pr_err("invalid physical address:%x\n", uPhyAddr);
 }
+EXPORT_SYMBOL(ispss_write_phys_reg);
 
 UNSG32 ispss_read_phys_reg(UNSG32 uPhyAddr)
 {
@@ -72,6 +74,7 @@ UNSG32 ispss_read_phys_reg(UNSG32 uPhyAddr)
 	pr_err("invalid physical address:%x\n", uPhyAddr);
 	return 0;
 }
+EXPORT_SYMBOL(ispss_read_phys_reg);
 
 static UNSG32 ispss_ioctl(int request, void *msg)
 {

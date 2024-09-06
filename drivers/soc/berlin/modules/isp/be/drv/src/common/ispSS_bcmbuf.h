@@ -158,6 +158,8 @@ int ISPSS_BCMBUF_Raw_To_CFGQ(const UINT32 *pdata, UINT32 length, struct DHUB_CFG
  ********************************************************************/
 int ISPSS_CFGQ_To_CFGQ(struct DHUB_CFGQ *src_cfgQ, struct DHUB_CFGQ *cfgQ);
 
+int ISPSS_BCMDHUB_AutoPush(int cpcbID, int intrType, int enable);
+
 int ISPSS_CFGQ_Create(struct DHUB_CFGQ *pCfgQ, int size);
 
 int ISPSS_CFGQ_Destroy(struct DHUB_CFGQ *pCfgQ);

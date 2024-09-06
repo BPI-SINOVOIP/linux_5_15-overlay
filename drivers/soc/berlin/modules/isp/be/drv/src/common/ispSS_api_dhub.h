@@ -771,7 +771,7 @@ UNSG32	dhub2d_channel_cfg(
 		T64b		cfgQ[]);
 
 /****************************************************************************************
- * Function: dhub2nd_channel_cfg
+ * Function: ispss_dhub2nd_channel_cfg
  * Description: Configurate a dHub2ND channel.
  * void	*hdl,	 Handle to HDL_dhub2d
  * SIGN32	id,	Channel ID in $dHubReg2D
@@ -791,7 +791,7 @@ UNSG32	dhub2d_channel_cfg(
  * Return: UNSG32 -   Number of (adr,pair) added to cfgQ
  * *************************************************************************************
  */
-UNSG32  dhub2nd_channel_cfg(
+UNSG32  ispss_dhub2nd_channel_cfg(
 		void	*hdl,
 		SIGN32	id,
 		UNSG32	addr,

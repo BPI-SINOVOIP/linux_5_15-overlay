@@ -20,7 +20,7 @@ int ispSS_SHM_Release(SHM_HANDLE phShm);
 int ispSS_SHM_CleanCache(SHM_HANDLE phShm, unsigned int offset, unsigned int size);
 int ispSS_SHM_GetVirtualAddress(SHM_HANDLE phShm, int uiOffset, void **pVirtAddr);
 int ispSS_SHM_GetPhysicalAddress(SHM_HANDLE phShm, int uiOffset, void **pPhyAddr);
-int ispSS_SHM_Init(void);
-int ispSS_SHM_Deinit(void);
+int ispSS_SHM_Init(struct device *dev);
+int ispSS_SHM_Deinit(struct device *dev);
 
 #endif

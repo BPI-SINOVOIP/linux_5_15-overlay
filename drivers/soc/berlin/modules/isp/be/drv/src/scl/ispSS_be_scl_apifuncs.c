@@ -11,6 +11,7 @@
 #include "ispSS_api_dhub_config.h"
 #include "ispSS_be_frc_scl.h"
 #include "ispSS_be_scl_common.h"
+#include "ispSS_bcmbuf_debug.h"
 
 //Internal Macros
 #define ISPSS_BE_SCL_SUBMIT_QUEUE

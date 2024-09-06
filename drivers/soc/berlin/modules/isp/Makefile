@@ -1,4 +1,6 @@
 obj-$(CONFIG_SYNA_ISP) += isp.o
+obj-$(CONFIG_SYNA_ISP_DMA_HEAP) += isp_dma_heap.o
+obj-$(CONFIG_SYNA_ISP_BE) += isp_be.o
 obj-$(CONFIG_SYNA_ISP_SCALER) += scaler.o
 obj-$(CONFIG_VIDEO_VVCAM_DRIVER) += vvcam_isp.o
 obj-$(CONFIG_VIDEO_VVCAM_DRIVER) += vvcam_vb.o
@@ -40,25 +42,29 @@ HEADER_PATH +=  $(ISP_INC_PATH)    \
 		-I$(srctree)/drivers/soc/berlin/modules/isp/be/v4l2/memops \
 		-I$(srctree)/drivers/soc/berlin/modules/isp/be/v4l2/scaler
 
-scaler-objs += be/v4l2/scaler/m2m_scaler.o \
-		be/v4l2/scaler/scaler_dbg.o \
-		be/v4l2/scaler/scaler_drv_api.o \
-		be/v4l2/memops/isp_dma_heap.o \
-		be/drv/src/scl/ispSS_be_frc_scl.o \
-		be/drv/src/scl/ispSS_be_scl_api.o \
-		be/drv/src/scl/ispSS_be_scl_apifuncs.o \
-		be/drv/src/intf/ispbe_api.o \
+isp_be-objs += be/drv/src/intf/ispbe_api.o \
+		be/drv/src/common/ispSS_shm.o \
 		be/drv/src/common/ispSS_fe_client.o \
 		be/drv/src/common/ispSS_bcmbuf.o \
+		be/drv/src/common/ispSS_bcmbuf_debug.o \
 		be/drv/src/common/ispSS_bcmbuf_queue.o \
 		be/drv/src/common/ispSS_clkrst.o \
 		be/drv/src/common/ispSS_api_dhub_config.o \
 		be/drv/src/common/ispSS_be_Mtr.o \
 		be/drv/src/common/ispSS_dhub_drv.o \
 		be/drv/src/common/ispSS_rqstq.o \
-		be/drv/src/common/ispSS_shm.o \
 		be/drv/src/common/ispSS_reg.o \
-		be/drv/src/common/hal_dhub.o
+		be/drv/src/common/hal_dhub.o \
+		be/drv/src/common/isp_be_driver.o
+
+isp_dma_heap-objs += be/v4l2/memops/isp_dma_heap.o
+
+scaler-objs += be/v4l2/scaler/m2m_scaler.o \
+		be/v4l2/scaler/scaler_dbg.o \
+		be/v4l2/scaler/scaler_drv_api.o \
+		be/drv/src/scl/ispSS_be_frc_scl.o \
+		be/drv/src/scl/ispSS_be_scl_api.o \
+		be/drv/src/scl/ispSS_be_scl_apifuncs.o
 
 HEADER_PATH += -I$(srctree)/drivers/soc/berlin/modules/isp/isp/vvcam/common \
 		-I$(srctree)/drivers/soc/berlin/modules/isp/isp/vvcam/v4l2/isp/isp_ctrl \

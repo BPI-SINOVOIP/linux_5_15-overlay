@@ -13,6 +13,7 @@
 #include "ispbe_api.h"
 #include "ispbe_err.h"
 #include "ispBE_common.h"
+#include "common.h"
 #include "scaler_drv_api.h"
 #include "scaler_dbg.h"
 
@@ -52,32 +53,16 @@ msg_error:
 
 HRESULT scaler_api_init(void)
 {
+	struct ISPBE_CA_DRV_CTX drv_ctx;
 	HRESULT result = SUCCESS;
 
 	scaler_print("[INIT]\n");
 
-	result = ispSS_SHM_Init();
-	if (result) {
-		pr_err("%s(): failed to create shm\n", __func__);
-		result = FAILURE;
-		goto memory_init_failed;
-	}
+	ISPSS_BE_DNSCL3_Probe(&drv_ctx);
 
-	/* Initialize ISPBE-CA module */
-	result = ISPBE_CA_Initialize();
-	if (result) {
-		pr_err("%s(): CA initialize failed!!\n", __func__);
-		if (result == -EINVAL)
-			result = -EPROBE_DEFER;
-		else
-			result = FAILURE;
-		goto err_CA_fail;
-	}
-
-	result = ISPBE_MODULE_Init(ISPBE_MODULE_DNSCL3);
+	result = ISPBE_MODULE_Init(ISPBE_MODULE_DNSCL3, drv_ctx, NULL);
 	if (result != SUCCESS) {
 		pr_err("[INIT] Failed (result=0x%x)\n", result);
-		result = FAILURE;
 		goto err_scaler_fail;
 	}
 
@@ -85,11 +70,6 @@ HRESULT scaler_api_init(void)
 	return SUCCESS;
 
 err_scaler_fail:
-	/* Deinitialize ISPBE-CA module */
-	ISPBE_CA_DeInitialize();
-err_CA_fail:
-	ispSS_SHM_Deinit();
-memory_init_failed:
 	return result;
 }
 
@@ -102,20 +82,6 @@ HRESULT scaler_api_deinit(void)
 	result = ISPBE_MODULE_Destroy(ISPBE_MODULE_DNSCL3);
 	if (result != SUCCESS) {
 		pr_err("[DEINIT] Failed (result=0x%x)\n", result);
-		return result;
-	}
-
-	/* Deinitialize ISPBE-CA module */
-	ISPBE_CA_DeInitialize();
-	if (result != 0) {
-		pr_err("%s(): CA Deinitialize failed!!\n", __func__);
-		return result;
-	}
-
-	/*Release all SHM used by scaler drv */
-	result = ispSS_SHM_Deinit();
-	if (result) {
-		pr_err("%s(): failed to release shm\n", __func__);
 		return result;
 	}
 

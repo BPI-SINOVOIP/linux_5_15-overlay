@@ -63,7 +63,8 @@ const INT wrClientAddress[ISP_WR_CHANNEL_MAX] = {
 };
 
 
-const INT rdClientAddress[ISP_RD_CHANNEL_MAX] = {baseAddr_OVPDNSCL,
+const INT rdClientAddress[ISP_RD_CHANNEL_MAX] = {
+	baseAddr_OVPDNSCL,
 	baseAddr_OVPDNSCL,
 	0, 0, 0, 0, 0, 0
 };
