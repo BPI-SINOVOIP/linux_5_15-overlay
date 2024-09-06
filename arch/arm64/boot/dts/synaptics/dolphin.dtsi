@@ -1093,6 +1093,11 @@
 			compatible = "syna,dolphin-isp-scaler";
 		};
 
+		isp_be: isp_be {
+			status = "disabled";
+			compatible = "syna,dolphin-isp-be";
+		};
+
 		isp_vsi: isp_vsi@f9100000{
 			id = <0>;
 			status = "disabled";

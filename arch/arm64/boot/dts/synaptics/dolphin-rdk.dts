@@ -530,6 +530,10 @@
 	dev-addr = <112>;
 };
 
+&isp_be {
+	status = "okay";
+};
+
 &isp_scaler {
 	status = "okay";
 };
