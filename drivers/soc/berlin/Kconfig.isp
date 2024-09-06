@@ -19,6 +19,13 @@ config ISP_DOLPHIN_A0
 
 endchoice
 
+config SYNA_ISP_BE
+	tristate "Support ISP BE Common utilities"
+	depends on SYNA_ISP
+	default n
+	help
+		isp be common utilities
+
 config SYNA_ISP_SCALER
 	tristate "Support for ISP Scaler component"
 	depends on VIDEO_DEV && VIDEO_V4L2 && SYNA_ISP
@@ -36,5 +43,11 @@ config VIDEO_VVCAM_DRIVER
 	select VIDEOBUF2_DMA_CONTIG
 	help
 		vvcam isp driver
+
+config SYNA_ISP_DMA_HEAP
+	tristate "Support for ISP DMA HEAP for DMA Memory"
+	default n
+	help
+		isp dma heap
 
 endif
