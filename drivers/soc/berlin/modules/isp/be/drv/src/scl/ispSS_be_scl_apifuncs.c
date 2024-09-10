@@ -1409,6 +1409,7 @@ static void ISPSS_BE_SCL_programSclPipe(struct ISP_BE_BCM *pSclBcmBuf,
 			stCfg2NDDMAParam.mtrREn   = psclRqstMsg->out_mtrMode;
 			stCfg2NDDMAParam.updSemId = 0;
 			stCfg2NDDMAParam.chkSemId = 0;
+			stCfg2NDDMAParam.addr     = 0;
 		} else {
 			stCfg2NDDMAParam.mtrREn = 0;
 		}
@@ -1445,6 +1446,7 @@ static void ISPSS_BE_SCL_programSclPipe(struct ISP_BE_BCM *pSclBcmBuf,
 				stCfg2NDDMAParam.mtrREn   = psclRqstMsg->out_mtrMode;
 				stCfg2NDDMAParam.updSemId = 0;
 				stCfg2NDDMAParam.chkSemId = 0;
+				stCfg2NDDMAParam.addr     = 0;
 			} else {
 				stCfg2NDDMAParam.mtrREn = 0;
 			}

@@ -257,12 +257,10 @@ UNSG32 ISPSS_DhubCfg2NDDMA(struct ISPSS_DHUB_CFG_2NDDMA_PARAM *pstCfg2NDDMAParam
 		burst = (ISP_DHUB_BURST_BW_OPT > 0)
 			? ISP_DHUB_BURST_BW_OPT : pstCfg2NDDMAParam->width;
 		mtu   = ISP_DHUB_MTU_OPT;
-		addr = 0;
 		step2 = 262144;
 	} else if (IS_MMU_ONLY_ENABLED(pstCfg2NDDMAParam->mtrREn)) {
 		burst = ISP_DHUB_BURST_MMU_ONLY;
 		mtu   = ISP_DHUB_MTU_MMU_ONLY;
-		addr = 0;
 		step2 = 262144;
 	} else {
 		/* Overlayed horizontal line on top of video is seen when MTU > 128 and
