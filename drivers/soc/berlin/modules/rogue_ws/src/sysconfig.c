@@ -135,7 +135,8 @@ PVRSRV_ERROR SynaPrePowerState(IMG_HANDLE hSysData,
 		PVRSRV_SYS_POWER_STATE eCurrentPowerState,
 		PVRSRV_POWER_FLAGS bForced)
 {
-	if (eNewPowerState == PVRSRV_SYS_POWER_STATE_ON)
+	if ((eNewPowerState == PVRSRV_SYS_POWER_STATE_ON) &&
+	    (eNewPowerState != eCurrentPowerState))
 	{
 		/* Enable clock, PLATYPUS's GFX Core Clock register have protected by TEE,
 		   need call TA to open the clock. DOLPHIN/DVF GFX Core Clock is normal*/
@@ -165,7 +166,8 @@ PVRSRV_ERROR SynaPostPowerState(IMG_HANDLE hSysData,
 		PVRSRV_SYS_POWER_STATE eCurrentPowerState,
 		PVRSRV_POWER_FLAGS bForced)
 {
-	if (eNewPowerState == PVRSRV_SYS_POWER_STATE_OFF)
+	if ((eNewPowerState == PVRSRV_SYS_POWER_STATE_OFF) &&
+	    (eNewPowerState != eCurrentPowerState))
 	{
 		/* Disable clock, PLATYPUS's GFX Core Clock register have protected by TEE,
 		   need call TA to clock the clock. DOLPHIN/DVF GFX Core Clock is normal*/
