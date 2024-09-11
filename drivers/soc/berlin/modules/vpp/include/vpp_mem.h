@@ -12,7 +12,6 @@
 #include <linux/slab.h>
 #include <linux/mm.h>
 #include <linux/device.h>
-#include <linux/ion.h>
 #include <linux/dma-buf.h>
 #include <linux/version.h>
 
