@@ -103,8 +103,6 @@ int TZ_MV_VPP_Init(ENUM_TA_UUID_TYPE uuidType, VPP_INIT_PARM *vpp_init_parm)
 
 	VPP_CA_Initialize(uuidType, vpp_init_parm->dev);
 
-	VPP_CA_AVIOReset();
-
 	VPP_CA_Init(vpp_init_parm);
 
 	return MV_VPP_OK;
