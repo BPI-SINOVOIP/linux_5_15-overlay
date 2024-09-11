@@ -16,7 +16,6 @@
 #include <linux/semaphore.h>
 #include <linux/mm.h>
 #include <linux/interrupt.h>
-#include <linux/ion.h>
 
 #include "ctypes.h"
 #include "avio_type.h"

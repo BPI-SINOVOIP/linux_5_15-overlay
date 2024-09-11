@@ -10,7 +10,6 @@
 #include <linux/interrupt.h>
 #include <linux/extcon.h>
 #include <linux/extcon-provider.h>
-#include <linux/ion.h>
 
 #include "drv_msg.h"
 #include "avio_type.h"
