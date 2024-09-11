@@ -4,6 +4,8 @@
  *
  */
 #include <linux/debugfs.h>
+#include <drm/drm_debugfs.h>
+#include <drm/drm_file.h>
 #include "drm_syna_drv.h"
 #include "syna_vpp.h"
 

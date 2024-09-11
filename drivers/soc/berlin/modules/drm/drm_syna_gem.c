@@ -3,13 +3,13 @@
  * Copyright (C) 2021 Synaptics Incorporated
  *
  */
-#include <drm/drmP.h>
 #include <linux/dma-buf.h>
 
 #include <linux/slab.h>
 #include <linux/mutex.h>
 #include <linux/capability.h>
 #include <drm/drm_mm.h>
+#include <drm/drm_prime.h>
 #include <linux/version.h>
 
 #include "drm_syna_drv.h"

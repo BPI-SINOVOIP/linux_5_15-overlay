@@ -9,7 +9,6 @@
 #include <linux/platform_device.h>
 #include <linux/gpio/consumer.h>
 
-#include <drm/drmP.h>
 #include <linux/delay.h>
 #include "syna_vpp.h"
 #include "drm_syna_gem.h"

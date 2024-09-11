@@ -4,7 +4,6 @@
  *
  */
 
-#include <drm/drmP.h>
 #include <drm/drm_crtc.h>
 #include "drm_syna_drv.h"
 #include "vpp_api.h"

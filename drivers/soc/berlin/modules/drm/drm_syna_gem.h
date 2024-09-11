@@ -12,7 +12,6 @@
 #include <linux/slab.h>
 #include <linux/mutex.h>
 #include <linux/capability.h>
-#include <drm/drmP.h>
 #include <drm/drm_mm.h>
 #include <drm/drm_gem.h>
 #include "vpp_mem.h"

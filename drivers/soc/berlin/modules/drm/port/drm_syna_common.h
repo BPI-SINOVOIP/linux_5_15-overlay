@@ -10,7 +10,6 @@
 #include <linux/component.h>
 #include <linux/of_platform.h>
 #include <linux/kthread.h>
-#include <drm/drmP.h>
 #include <drm/drm_gem.h>
 #include <drm/drm_atomic_helper.h>
 

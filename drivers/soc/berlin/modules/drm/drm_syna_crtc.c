@@ -5,11 +5,11 @@
  */
 
 #include <linux/version.h>
-#include <drm/drmP.h>
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_plane_helper.h>
 #include <drm/drm_atomic_helper.h>
+#include <drm/drm_vblank.h>
 
 #include "drm_syna_drv.h"
 #include "drm_syna_gem.h"

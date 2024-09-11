@@ -8,6 +8,7 @@
 
 #include <linux/device.h>
 #include <linux/types.h>
+#include <drm/drm_framebuffer.h>
 #include <uapi/synaptics/bm.h>
 #include <linux/berlin_meta.h>
 #include "drm_syna_gem.h"

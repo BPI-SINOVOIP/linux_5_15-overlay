@@ -3,7 +3,6 @@
  * Copyright (C) 2021 Synaptics Incorporated
  *
  */
-#include <drm/drmP.h>
 #include <drm/drm_plane_helper.h>
 #include <drm/drm_gem_framebuffer_helper.h>
 #include <drm/drm_atomic.h>
