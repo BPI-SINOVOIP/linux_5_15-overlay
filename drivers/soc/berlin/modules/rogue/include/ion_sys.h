@@ -48,8 +48,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/version.h>
 
 #include "pvrsrv_error.h"
+#if defined(SUPPORT_ION)
 #include PVR_ANDROID_ION_HEADER
-
+#endif
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0))
 PVRSRV_ERROR IonInit(void *pvPrivateData);

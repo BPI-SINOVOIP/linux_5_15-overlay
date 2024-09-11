@@ -6,10 +6,12 @@
 #include "sysconfig.h"
 #include "physheap.h"
 #include <linux/dma-buf.h>
+#if defined(SUPPORT_ION)
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
 #include <linux/ion.h>
 #else
 #include PVR_ANDROID_ION_HEADER
+#endif
 #endif
 
 #define FW_SIZE_ALIGN				   0x10000
