@@ -20,7 +20,6 @@
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
-#include <linux/ion.h>
 #include <linux/berlin_meta.h>
 #include <linux/heap_extra.h>
 #include <uapi/linux/dma-buf.h>
@@ -28,6 +27,28 @@
 #define BERLIN_ALLOCATE_FAIL	-1
 #define BEST_FIT_ATTRIBUTE		BIT(8)
 #define MAX_ATTR_BUF_LEN		32
+
+/* Warning: if you want change following MACROs, please make sure you already
+ * reviewed and updated following places at same time:
+ * 1. ion.h in OSAL: about ION_A_XX definition;
+ * 2. berlin_heap.c in kernel: about ION_A_XX definition;
+ * 3. mem_region_userdata.h in bootloader: ION_A_XX and memory region userdata
+ *                                         definition.
+ * 4. mem_region_userdata.h in tee: ION_A_XX and memory region userdata
+ *                                  definition.
+ */
+
+/* The ion memory pool attribute flag bits */
+#define ION_A_FS                0x0001      /* For secure memory */
+#define ION_A_NS                0x0002      /* For non-secure memory */
+#define ION_A_FC                0x0004      /* For cacheable memory */
+#define ION_A_NC                0x0008      /* For non-cacheable memory */
+#define ION_A_FD                0x0010      /* For dynamic memory */
+#define ION_A_ND                0x0020      /* For static memory */
+#define ION_A_CC                0x0100      /* For control (class) memory */
+#define ION_A_CV                0x0200      /* For video (class) memory */
+#define ION_A_CG                0x0400      /* For graphics (class) memory */
+#define ION_A_CO                0x0800      /* For other (class) memory */
 
 struct berlin_heap {
 	struct dma_heap *heap;
