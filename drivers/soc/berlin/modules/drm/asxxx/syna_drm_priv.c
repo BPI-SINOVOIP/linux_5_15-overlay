@@ -38,43 +38,21 @@ int syna_modeset_createEntries(struct syna_drm_private *dev_priv)
 {
 	struct drm_device *dev = dev_priv->dev;
 	int err = 0;
-	ENUM_PLANE_ID plane_id;
 	unsigned int plane_possible_crtc_mask;
 	enum drm_plane_type plane_type;
 	int panelId;
+	int encoderId;
 
-	for (plane_id = FIRST_PLANE; plane_id < MAX_CRTC; plane_id++) {
-		plane_type = DRM_PLANE_TYPE_PRIMARY;
-		plane_possible_crtc_mask = (1 << plane_id);
-		dev_priv->plane[plane_id] = syna_plane_create(dev,
-				plane_possible_crtc_mask, plane_id, plane_type);
-		if (IS_ERR(dev_priv->plane[plane_id])) {
-			 DRM_ERROR("failed to create a %d plane\n", plane_type);
-			 err = PTR_ERR(dev_priv->plane[plane_id]);
-			 goto err_syna_modeset_createEntries;
-		}
-	}
-
-	for (panelId = 0; panelId < MAX_PANELS; panelId++) {
-		plane_id = syna_primary_plane_id[panelId];
-		dev_priv->crtc[panelId] = syna_crtc_create(dev, panelId, dev_priv->plane[plane_id]);
-		if (IS_ERR(dev_priv->crtc[panelId])) {
-			DRM_ERROR("failed to create a CRTC\n");
-			err = PTR_ERR(dev_priv->crtc[panelId]);
-			goto err_syna_modeset_createEntries;
-		}
-	}
-
-	for (panelId = 0; panelId < MAX_PANELS; panelId++) {
-		dev_priv->encoder[panelId] = syna_encoder_create(dev, panelId, panelId);
+	for (encoderId = 0, panelId = 0; panelId < MAX_PANELS; panelId++) {
+		dev_priv->encoder[panelId] = syna_encoder_create(dev, panelId, panelId, (1 << encoderId));
 
 		if (IS_ERR(dev_priv->encoder[panelId])) {
-			DRM_ERROR("failed to create a connector %d\n", panelId);
+			DRM_ERROR("failed to create a encoder %d\n", panelId);
 		} else {
 			dev_priv->connector[panelId] = syna_lcdc_connector_create(dev);
 
 			if (IS_ERR(dev_priv->connector[panelId])) {
-				DRM_ERROR("failed to create an encoder %d\n", panelId);
+				DRM_ERROR("failed to create an Connector %d\n", panelId);
 			} else {
 				err = drm_connector_attach_encoder(dev_priv->connector[panelId],
 								dev_priv->encoder[panelId]);
@@ -89,8 +67,30 @@ int syna_modeset_createEntries(struct syna_drm_private *dev_priv)
 					goto err_syna_modeset_createEntries;
 				}
 			}
+
+			/* Note: one plane(GFX) per crtc/panel --
+			 * so panel & plane are used inter-changeably
+			 */
+			plane_type = DRM_PLANE_TYPE_PRIMARY;
+			plane_possible_crtc_mask = (1 << encoderId);
+			dev_priv->plane[panelId] = syna_plane_create(dev,
+					plane_possible_crtc_mask, panelId, plane_type);
+			if (IS_ERR(dev_priv->plane[panelId])) {
+				DRM_ERROR("failed to create a %d plane\n", plane_type);
+				err = PTR_ERR(dev_priv->plane[panelId]);
+				goto err_syna_modeset_createEntries;
+			}
+
+			dev_priv->crtc[panelId] = syna_crtc_create(dev, encoderId, dev_priv->plane[panelId]);
+			if (IS_ERR(dev_priv->crtc[panelId])) {
+				DRM_ERROR("failed to create a CRTC\n");
+				err = PTR_ERR(dev_priv->crtc[panelId]);
+				goto err_syna_modeset_createEntries;
+			}
+			encoderId++;
 		}
 	}
+
 err_syna_modeset_createEntries:
 	return err;
 }

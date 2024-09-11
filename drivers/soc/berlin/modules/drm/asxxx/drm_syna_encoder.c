@@ -69,7 +69,8 @@ syna_encoder_helper_mode_set(struct drm_encoder *encoder,
 {
 	struct syna_drm_private *dev_priv = encoder->dev->dev_private;
 	SYNA_LCDC_CONFIG lcdcConfig = {0};
-	struct drm_display_info *disp_info = &dev_priv->connector[encoder->index]->display_info;
+	int crtc_index = (encoder->encoder_type== DRM_MODE_ENCODER_DSI) ? 1 : 0;
+	struct drm_display_info *disp_info = &dev_priv->connector[crtc_index]->display_info;
 
 	if (disp_info->num_bus_formats) {
 		lcdcConfig.mode = *disp_info->bus_formats;
@@ -89,33 +90,35 @@ syna_encoder_helper_mode_set(struct drm_encoder *encoder,
 	lcdcConfig.upper_margin = mode->vtotal - mode->vsync_end; //BP
 	lcdcConfig.pixclock = mode->clock ;
 
-	if (encoder->index) {
+	if (crtc_index) {
 		VPP_Clock_Set_Rate_Ext(PIXEL_CLOCK_RATE(lcdcConfig.pixclock));
 	} else {
 		lcdcConfig.rgb_swap = lcdc_rgb_swap;
 		VPP_Clock_Set_Rate(PIXEL_CLOCK_RATE(lcdcConfig.pixclock));
 	}
 
-	if(dev_priv->connector[encoder->index] && dev_priv->panel[encoder->index])
-		drm_panel_prepare(dev_priv->panel[encoder->index]);
+	if(dev_priv->connector[crtc_index] && dev_priv->panel[crtc_index])
+		drm_panel_prepare(dev_priv->panel[crtc_index]);
 
-	syna_vpp_load_config(encoder->index, &lcdcConfig);
+	syna_vpp_load_config(crtc_index, &lcdcConfig);
 }
 
 static void syna_encoder_helper_enable(struct drm_encoder *encoder)
 {
+	int crtc_index = (encoder->encoder_type== DRM_MODE_ENCODER_DSI) ? 1 : 0;
 	struct syna_drm_private *dev_priv = encoder->dev->dev_private;
 
-	if(dev_priv->connector[encoder->index] && dev_priv->panel[encoder->index])
-		drm_panel_enable(dev_priv->panel[encoder->index]);
+	if(dev_priv->connector[crtc_index] && dev_priv->panel[crtc_index])
+		drm_panel_enable(dev_priv->panel[crtc_index]);
 }
 
 static void syna_encoder_helper_disable(struct drm_encoder *encoder)
 {
+	int crtc_index = (encoder->encoder_type== DRM_MODE_ENCODER_DSI) ? 1 : 0;
 	struct syna_drm_private *dev_priv = encoder->dev->dev_private;
 
-	if(dev_priv->connector[encoder->index] && dev_priv->panel[encoder->index])
-		drm_panel_disable(dev_priv->panel[encoder->index]);
+	if(dev_priv->connector[crtc_index] && dev_priv->panel[crtc_index])
+		drm_panel_disable(dev_priv->panel[crtc_index]);
 }
 
 static void syna_encoder_destroy(struct drm_encoder *encoder)
@@ -142,7 +145,7 @@ static const struct drm_encoder_funcs syna_encoder_funcs = {
 };
 
 struct drm_encoder *syna_encoder_create(struct drm_device *dev,
-		ENUM_VOUT_CONNECTOR vout_id, ENUM_CPCB_ID cpcb_id)
+		ENUM_VOUT_CONNECTOR vout_id, ENUM_CPCB_ID cpcb_id, int possible_crtc_mask)
 {
 	struct drm_encoder *encoder;
 	int err;
@@ -150,10 +153,8 @@ struct drm_encoder *syna_encoder_create(struct drm_device *dev,
 						DRM_MODE_ENCODER_DPI :\
 						DRM_MODE_ENCODER_DSI;
 
-	if (!of_find_compatible_node(NULL, NULL, compatible_name[cpcb_id])) {
-		DRM_ERROR("Node not found %s\n", compatible_name[cpcb_id]);
+	if (!of_device_is_available(of_find_compatible_node(NULL, NULL, compatible_name[cpcb_id])))
 		return ERR_PTR(-ENODEV);
-	}
 
 	syna_encoder_parse_lcdc_dt();
 
@@ -167,8 +168,6 @@ struct drm_encoder *syna_encoder_create(struct drm_device *dev,
 		DRM_ERROR("Failed to initialise encoder - %d", vout_id);
 		kfree(encoder);
 		return ERR_PTR(err);
-	} else {
-		encoder->index = cpcb_id;
 	}
 
 	drm_encoder_helper_add(encoder, &syna_encoder_helper_funcs);
@@ -177,7 +176,7 @@ struct drm_encoder *syna_encoder_create(struct drm_device *dev,
 	 * This is a bit field that's used to determine which
 	 * CRTCs can drive this encoder.
 	 */
-	encoder->possible_crtcs = 0x1 << cpcb_id;
+	encoder->possible_crtcs = possible_crtc_mask;
 
 	DRM_DEBUG_DRIVER("[ENCODER:%d:%s]\n", encoder->base.id, encoder->name);
 
