@@ -19,7 +19,6 @@
 #include <linux/platform_device.h>
 #include <linux/workqueue.h>
 #include <linux/utsname.h>
-#include <linux/ion.h>
 #include <linux/mod_devicetable.h>
 #include <linux/berlin_meta.h>
 #include <linux/heap_extra.h>
