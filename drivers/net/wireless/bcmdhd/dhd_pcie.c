@@ -2270,6 +2270,9 @@ dhdpcie_dongle_attach(dhd_bus_t *bus)
 		case BCM43756_CHIP_ID:
 			bus->dongle_ram_base = CR4_43756_RAM_BASE;
 			break;
+		case BCM43711_CHIP_ID:
+			bus->dongle_ram_base = CR4_43711_RAM_BASE;
+			break;
 		case BCM4376_CHIP_GRPID:
 			bus->dongle_ram_base = CR4_4376_RAM_BASE;
 			break;
@@ -3570,6 +3573,10 @@ dhd_bus_download_firmware(struct dhd_bus *bus, osl_t *osh,
 	dhdpcie_dump_resource(bus);
 #endif /* LINUX || linux */
 
+	if (CHIPID(bus->sih->chip) == BCM43711_CHIP_ID) {
+		si_pmu_43711a0_udr_war(bus->sih);
+	}
+
 	ret = dhdpcie_download_firmware(bus, osh);
 
 	return ret;
@@ -4390,6 +4397,10 @@ _dhdpcie_download_firmware(struct dhd_bus *bus)
 	if (!dlok) {
 		DHD_ERROR(("%s:%d dongle image download failed\n", __FUNCTION__, __LINE__));
 		goto err;
+	}
+
+	if (CHIPID(bus->sih->chip) == BCM43711_CHIP_ID) {
+		si_pmu_43711a0_pll_war(bus->sih);
 	}
 
 	/* EXAMPLE: nvram_array */
@@ -9513,8 +9524,9 @@ dhd_apply_d11_war_length(struct  dhd_bus *bus, uint32 len, uint32 d11_lpbk)
 		chipid == BCM4362_CHIP_ID ||
 		chipid == BCM4377_CHIP_ID ||
 		chipid == BCM43751_CHIP_ID ||
+		chipid == BCM43752_CHIP_ID ||
 		chipid == BCM43756_CHIP_ID ||
-		chipid == BCM43752_CHIP_ID) &&
+		chipid == BCM43711_CHIP_ID) &&
 		(d11_lpbk != M2M_DMA_LPBK && d11_lpbk != M2M_NON_DMA_LPBK)) {
 			len += 8;
 	}
@@ -13448,6 +13460,10 @@ dhdpcie_chipmatch(uint16 vendor, uint16 device)
 		case BCM43756E_D11AX6E_ID:
 		case BCM43756E_D11AC_ID:
 		case BCM43756E_D11AX_ID:
+		case BCM43711_CHIP_ID:
+		case BCM43711_D11AX6E_ID:
+		case BCM43711_D11AC_ID:
+		case BCM43711_D11AX_ID:
 		case BCM4381_CHIP_ID:
 		case BCM4381_D11AX_ID:
 		case BCM4382_CHIP_ID:

@@ -577,7 +577,7 @@ ifneq ($(CONFIG_BCMDHD_SDIO),)
   DHDCFLAGS += -DCUSTOM_TXINRX_THRES=128
   DHDCFLAGS += -DDHD_TXBOUND=75
   DHDCFLAGS += -DDHD_TXMINMAX=75
-
+#  DHDCFLAGS += -DENABLE_INSMOD_NO_FW_LOAD
   DHDCFLAGS += -DWLFC_STATE_PREALLOC
 endif
 
@@ -721,7 +721,7 @@ DHDOFILES := dhd_pno.o dhd_common.o dhd_ip.o dhd_custom_gpio.o \
     dhd_pno.o dhd_rtt.o dhd_linux_pktdump.o wl_cfg_btcoex.o hnd_pktq.o \
     hnd_pktpool.o wl_cfgvendor.o bcmxtlv.o bcm_app_utils.o dhd_debug.o \
     dhd_debug_linux.o wl_cfgnan.o dhd_mschdbg.o bcmbloom.o dhd_dbg_ring.o bcmstdlib_s.o frag.o \
-    dhd_linux_exportfs.o dhd_linux_tx.o
+    dhd_linux_exportfs.o dhd_linux_tx.o hndjtag.o
 
 # This file will be here only for internal builds and sets flags which may
 # affect subsequent behavior. See extended comment within it for details.

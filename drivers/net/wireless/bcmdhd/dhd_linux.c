@@ -10603,9 +10603,6 @@ bool dhd_update_fw_nv_path(dhd_info_t *dhdinfo)
 	int fw_path_len = sizeof(dhdinfo->fw_path);
 	int nv_path_len = sizeof(dhdinfo->nv_path);
 
-	DHD_ERROR(("dhd_update_fw_nv_path, chip:%08x, rev:%08x\n",
-		dhd_bus_chip(dhdinfo->pub.bus), dhd_bus_chiprev(dhdinfo->pub.bus)));
-
 	/* Update firmware and nvram path. The path may be from adapter info or module parameter
 	 * The path from adapter info is used for initialization only (as it won't change).
 	 *

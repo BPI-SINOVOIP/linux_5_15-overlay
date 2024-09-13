@@ -9664,14 +9664,14 @@ _dhdsdio_download_firmware(struct dhd_bus *bus)
 		goto err;
 	}
 
+	if (CHIPID(bus->sih->chip) == BCM43711_CHIP_ID) {
+		si_pmu_43711a0_pll_war(bus->sih);
+	}
+
 	/* External nvram takes precedence if specified */
 	if (dhdsdio_download_nvram(bus)) {
 		DHD_ERROR(("%s: dongle nvram file download failed\n", __FUNCTION__));
 		goto err;
-	}
-
-	if (CHIPID(bus->sih->chip) == BCM43711_CHIP_ID) {
-		si_pmu_43711a0_pll_war(bus->sih);
 	}
 
 	/* Take arm out of reset */
@@ -9866,6 +9866,11 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 #endif /* !defined(IGNORE_ETH0_DOWN) */
 #endif /* OEM_ANDROID */
 			/* Expect app to have torn down any connection before calling */
+			/* WAR: Configuring the UDR10 Regiter */
+			if (CHIPID(bus->sih->chip) == BCM43711_CHIP_ID) {
+				si_pmu_43711a0_udr_war(bus->sih);
+			}
+
 			/* Stop the bus, disable F2 */
 			dhd_bus_stop(bus, FALSE);
 
