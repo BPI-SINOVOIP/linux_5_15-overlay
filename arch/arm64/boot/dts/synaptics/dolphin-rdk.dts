@@ -500,6 +500,9 @@
 &mdio0 {
 	phy0: ethernet-phy@0 {
 		reg = <0>;
+		realtek,clkout-disable;
+		realtek,rxc-ssc-enable;
+		realtek,sysclk-ssc-enable;
 	};
 };
 
