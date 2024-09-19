@@ -50,6 +50,9 @@ static int VPP_IRQ_Handler(unsigned int irq, void *dev_id)
 	int intr_num;
 	MV_CC_MSG_t msg;
 
+	if (!hVPPIntrQ)
+		goto EXIT_ISR;
+
 	intr_num = ffs(irq) - 1;
 
 	if (atomic_read(&vppintr_cnt[intr_num]))
