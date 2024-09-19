@@ -205,8 +205,8 @@ static irqreturn_t avio_devices_dhub_isr(int irq, void *dev_id)
 		intr_status = instat & p_int_handler->intrMask;
 
 		//Clear/Ack interrupt
-		fops->semaphore_pop(pSemHandle, h_intr_num, 1);
-		fops->semaphore_clr_full(pSemHandle, h_intr_num);
+		fops->semaphore_pop(pSemHandle, intr_num, 1);
+		fops->semaphore_clr_full(pSemHandle, intr_num);
 
 		//Invoke the registered callback
 		if (intr_status && p_int_handler->pIntrHandler)
@@ -214,7 +214,7 @@ static irqreturn_t avio_devices_dhub_isr(int irq, void *dev_id)
 				p_int_handler->pIntrHandlerArgs);
 		else
 			avio_error("%s:%d: Spurious interrupt - %d/%x/%x\n",
-				__func__, __LINE__, h_intr_num,
+				__func__, __LINE__, intr_num,
 				intr_status, p_int_handler->intrMask);
 
 		//Clear the interrupt bit in instat
