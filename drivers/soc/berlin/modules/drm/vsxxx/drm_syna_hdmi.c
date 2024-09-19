@@ -415,8 +415,11 @@ struct drm_connector *syna_hdmi_connector_create(struct drm_device *dev)
 void syna_hdmi_add_debugfs_entry(struct syna_drm_private *dev_priv)
 {
 	struct drm_connector *connector = dev_priv->connector[VOUT_CONNECTOR_HDMI];
-	struct syna_conn_hdmi *syna_hdmi = to_syna_conn_hdmi(connector);
-	struct dentry *root = connector->debugfs_entry;
+	struct syna_conn_hdmi *syna_hdmi = connector ? to_syna_conn_hdmi(connector) : NULL;
+	struct dentry *root = connector ? connector->debugfs_entry : NULL;
+
+	if (!syna_hdmi || !root)
+		return;
 
 	/* control HPD handling */
 	syna_hdmi->debugfs_hpd_node = debugfs_create_file("enable_hpd_handle", S_IRUGO | S_IWUSR, root, connector,
