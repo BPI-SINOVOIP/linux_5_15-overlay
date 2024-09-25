@@ -1151,7 +1151,7 @@ int berlin_capture_hw_params(struct snd_pcm_substream *ss,
 		snd_pcm_format_name(bc->sample_format),
 		pcm_buffer_size_bytes, pcm_period_size_bytes);
 
-	if (bc->mode == I2SI_MODE) {
+	if ((bc->mode == I2SI_MODE) || (bc->mode == HDMII_MODE)) {
 		ch_pair_num = bc->chid_num;
 	} else {
 		//in case of odd channel number

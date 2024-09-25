@@ -241,6 +241,7 @@ static int berlin_indai_hw_params(struct snd_pcm_substream *substream,
 	a2a_data.freeFn = berlin_indai_aip_free_cb;
 	a2a_data.eventFn = berlin_indai_aip_event_cb;
 	a2a_data.hdmi = hdmi;
+	a2a_data.period_bytes = params_period_bytes(params);
 
 	if (a2a_ops) {
 		a2a_ops->get_hrx_status(&hdmi->hrx_status);
@@ -335,7 +336,7 @@ static struct snd_soc_dai_driver berlin_indai_dai = {
 	.capture = {
 		.stream_name = "HdmiCapture",
 		.channels_min = 2,
-		.channels_max = 2,
+		.channels_max = 8,
 		.rates = HDMI_CAPTURE_RATES,
 		.formats = HDMI_CAPTURE_FORMATS,
 	},

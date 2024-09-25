@@ -71,6 +71,7 @@ typedef struct _AIP_ALSA_CMD_DATA {
 	void *freeFn;
 	void *eventFn;
 	void *hdmi;
+	u32 period_bytes;
 } AIP_ALSA_CMD_DATA;
 
 typedef enum {
