@@ -322,6 +322,13 @@ dma_addr_t vb2_syna_bm_get_addr(struct vb2_buffer *vb, int plane_no,
 	return buf->dma_addr;
 }
 
+bool vb2_syna_bm_has_cache_carer(struct vb2_buffer *vb, int plane_no)
+{
+	struct vb2_syna_bm_buf *buf = vb->planes[plane_no].mem_priv;
+
+	return buf->dma_sgt == NULL ? false : true;
+}
+
 static void *vb2_syna_bm_vaddr(struct vb2_buffer *vb, void *buf_priv)
 {
 	struct vb2_syna_bm_buf *buf = buf_priv;

@@ -1070,12 +1070,20 @@ static void vb2ops_venc_buf_queue(struct vb2_buffer *vb)
 		}
 		++ctx->input_pic_seq;
 
-		for (i = 0; i < vb->num_planes; i++)
+		for (i = 0; i < vb->num_planes; i++) {
 			vpu_buf->bytesused[i] = vb2_get_plane_payload(vb, i);
+			if (vb2_syna_bm_has_cache_carer(vb, i))
+				vpu_buf->planes[i].gfp_flags |=
+					BERLIN_GFP_FLAG_CACHE_DONE;
+		}
 
 	} else if (test_bit(SYNA_VPU_STATUS_SET_FMT, &ctx->status)) {
 		vpu_buf = ctx->output_pool;
 		vpu_buf += vb->index;
+
+		if (vb2_syna_bm_has_cache_carer(vb, 0))
+			vpu_buf->planes[0].gfp_flags |=
+				BERLIN_GFP_FLAG_CACHE_DONE;
 
 		if (syna_venc_push_es_buf(ctx, vb->index))
 			return;

@@ -45,6 +45,7 @@ syna_vpu_bm_dh_plane_memid(struct vb2_buffer *vb, unsigned int plane_no)
 void *vb2_syna_bm_cookie(struct vb2_buffer *vb, void *buf_priv);
 dma_addr_t vb2_syna_bm_get_addr(struct vb2_buffer *vb, int plane_no,
 			    enum syna_bm_addr_t type);
+bool vb2_syna_bm_has_cache_carer(struct vb2_buffer *vb, int plane_no);
 
 void vb2_syna_dh_bm_put(void *buf_priv);
 void *syna_dh_bm_alloc(struct device *dev, unsigned long size);
