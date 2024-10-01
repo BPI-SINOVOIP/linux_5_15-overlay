@@ -76,7 +76,7 @@ static const struct regmap_config lt9611_regmap_config = {
 static int lt9611_mipi_input_analog(struct lt9611 *lt9611)
 {
 	const struct reg_sequence reg_cfg[] = {
-		{ 0x8106, 0x40 }, /* port A rx current */
+		{ 0x8106, 0x60 }, /* port A rx current */
 		{ 0x810a, 0xfe }, /* port A ldo voltage set */
 		{ 0x810b, 0xbf }, /* enable port A lprx */
 		{ 0x8111, 0x40 }, /* port B rx current */
