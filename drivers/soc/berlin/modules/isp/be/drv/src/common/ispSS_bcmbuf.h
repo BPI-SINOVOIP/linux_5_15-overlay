@@ -120,7 +120,7 @@ int ISPSS_BCMDHUB_Raw_To_Commit(unsigned int *start, int size);
  *         intrType - interrupt type which this cmdQ belongs to: 0 - VBI, 1 - VDE
  * NOTE: this API is only called from VBI/VDE ISR.
  *******************************************************************************/
-int ISPSS_BCMDHUB_CFGQ_Commit(struct DHUB_CFGQ *cfgQ, int cpcbID, int intrType);
+int ISPSS_BCMDHUB_CFGQ_Commit(struct DHUB_CFGQ *cfgQ, int cpcbID, int intrType, int block);
 
 /*******************************************************************************
  * FUNCTION: commit cfgQ which contains DMA dhub programming info to VBI interrupt service routine

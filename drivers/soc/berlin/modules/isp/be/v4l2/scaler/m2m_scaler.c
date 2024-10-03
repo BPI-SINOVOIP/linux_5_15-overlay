@@ -136,7 +136,10 @@ static void m2m_scaler_job_finish(struct m2m_scaler_ctx *ctx, int vb_state)
 {
 	struct vb2_v4l2_buffer *src_vb, *dst_vb;
 
-	if (WARN(!ctx || !ctx->fh.m2m_ctx, "Null hardware context\n"))
+	if (WARN(!ctx, "Null hardware context\n"))
+		return;
+
+	if (WARN(!ctx->fh.m2m_ctx, "Null hardware m2m ctx context\n"))
 		return;
 
 	dev_dbg(ctx->m2m_scaler_dev->dev, "%s is invoked\n", __func__);
@@ -154,23 +157,26 @@ static void m2m_scaler_job_finish(struct m2m_scaler_ctx *ctx, int vb_state)
 		dst_vb->flags |= src_vb->flags &
 			V4L2_BUF_FLAG_TSTAMP_SRC_MASK;
 
-		v4l2_m2m_buf_done(src_vb, vb_state);
-		v4l2_m2m_buf_done(dst_vb, vb_state);
+		if (src_vb->vb2_buf.state == VB2_BUF_STATE_ACTIVE)
+			v4l2_m2m_buf_done(src_vb, vb_state);
+		if (dst_vb->vb2_buf.state == VB2_BUF_STATE_ACTIVE)
+			v4l2_m2m_buf_done(dst_vb, vb_state);
 
-		v4l2_m2m_job_finish(ctx->m2m_scaler_dev->m2m.m2m_dev,
-				ctx->fh.m2m_ctx);
 	}
 
 	/* In case of error , need to clean up */
 	if (vb_state == VB2_BUF_STATE_ERROR) {
-		if (src_vb)
+
+		if (src_vb && src_vb->vb2_buf.state == VB2_BUF_STATE_ACTIVE)
 			v4l2_m2m_buf_done(src_vb, vb_state);
-		if (dst_vb)
+		if (dst_vb && dst_vb->vb2_buf.state == VB2_BUF_STATE_ACTIVE)
 			v4l2_m2m_buf_done(dst_vb, vb_state);
 
+	}
+
+	if (src_vb || dst_vb)
 		v4l2_m2m_job_finish(ctx->m2m_scaler_dev->m2m.m2m_dev,
 				ctx->fh.m2m_ctx);
-	}
 	clear_bit(SCALER_M2M_RUNNING, &ctx->m2m_scaler_dev->state);
 	complete(&ctx->work_done);
 }
@@ -182,6 +188,7 @@ static void delayed_m2m_scaler_work_function(struct work_struct *work)
 	struct m2m_scaler_ctx *ctx = container_of(pdelay,
 			struct m2m_scaler_ctx,  scaler_delayed_work);
 
+	pr_info("%s: timedout events\n", __func__);
 	m2m_scaler_job_finish(ctx, VB2_BUF_STATE_ERROR);
 }
 

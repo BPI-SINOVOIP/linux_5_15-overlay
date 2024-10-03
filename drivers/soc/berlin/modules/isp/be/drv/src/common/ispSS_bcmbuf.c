@@ -428,12 +428,13 @@ int ISPSS_BCMDHUB_Raw_To_Commit(uint32_t *start, int size)
  *         cpcbID - cpcb ID which this cmdQ belongs to
  *         intrType - interrupt type which this cmdQ belongs to
  *******************************************************************************/
-int ISPSS_BCMDHUB_CFGQ_Commit(struct DHUB_CFGQ *cfgQ, int cpcbID, int intrType)
+int ISPSS_BCMDHUB_CFGQ_Commit(struct DHUB_CFGQ *cfgQ, int cpcbID, int intrType, int block)
 {
 	/*trig_event*/
 	unsigned int sched_qid = intrType;
 	UNSG32 FullSts;
 	unsigned int bcm_sched_cmd[2];
+	int ret  = ISPSS_OK;
 
 	struct HDL_semaphore *pSemHandle;
 	struct HDL_dhub2d *pDhubHandle;
@@ -451,23 +452,25 @@ int ISPSS_BCMDHUB_CFGQ_Commit(struct DHUB_CFGQ *cfgQ, int cpcbID, int intrType)
 		BCM_SCHED_GetFullSts(sched_qid, &FullSts);
 	} while (FullSts);
 
-	dhubID = ispDhubChMap_TSB_BCM_R1;
-	pDhubHandle = &ISPSS_TSB_dhubHandle;
+	if (block) {
+		dhubID = ispDhubChMap_TSB_BCM_R1;
+		pDhubHandle = &ISPSS_TSB_dhubHandle;
 
-	pSemHandle = dhub_semaphore(&(pDhubHandle->dhub));
-	status = semaphore_chk_full(pSemHandle, dhubID);
-	if (status) {
-		semaphore_pop(pSemHandle, dhubID, 1);
-		semaphore_clr_full(pSemHandle, dhubID);
-	}
-
-	pSemHandle = dhub_semaphore(&(pDhubHandle->dhub));
-	status = semaphore_chk_full(pSemHandle, dhubID);
-	while (status) {
-		semaphore_pop(pSemHandle, dhubID, 1);
-		semaphore_clr_full(pSemHandle, dhubID);
-
+		pSemHandle = dhub_semaphore(&(pDhubHandle->dhub));
 		status = semaphore_chk_full(pSemHandle, dhubID);
+		if (status) {
+			semaphore_pop(pSemHandle, dhubID, 1);
+			semaphore_clr_full(pSemHandle, dhubID);
+		}
+
+		pSemHandle = dhub_semaphore(&(pDhubHandle->dhub));
+		status = semaphore_chk_full(pSemHandle, dhubID);
+		while (status) {
+			semaphore_pop(pSemHandle, dhubID, 1);
+			semaphore_clr_full(pSemHandle, dhubID);
+
+			status = semaphore_chk_full(pSemHandle, dhubID);
+		}
 	}
 
 	ispSS_SHM_CleanCache(cfgQ->handle, 0, cfgQ->len*16);
@@ -477,19 +480,19 @@ int ISPSS_BCMDHUB_CFGQ_Commit(struct DHUB_CFGQ *cfgQ, int cpcbID, int intrType)
 	while (!BCM_SCHED_PushCmd(sched_qid, bcm_sched_cmd, NULL))
 		;
 
-	pSemHandle = dhub_semaphore(&(pDhubHandle->dhub));
-	status = semaphore_chk_full(pSemHandle, dhubID);
-	while (!status) {
+	if (block) {
+		pSemHandle = dhub_semaphore(&(pDhubHandle->dhub));
 		status = semaphore_chk_full(pSemHandle, dhubID);
-		pr_debug("%s %d: sem full: %X\n", __func__, __LINE__, status);
+		while (!status) {
+			status = semaphore_chk_full(pSemHandle, dhubID);
+			pr_debug("%s %d: sem full: %X\n", __func__, __LINE__, status);
+		}
+		semaphore_pop(pSemHandle, dhubID, 1);
+		semaphore_clr_full(pSemHandle, dhubID);
 	}
-
-	semaphore_pop(pSemHandle, dhubID, 1);
-	semaphore_clr_full(pSemHandle, dhubID);
-
 	mutex_unlock(&gBCM_SUBMIT_lock);
 
-	return ISPSS_OK;
+	return ret;
 }
 
 INT ISPSS_CFGQ_Create(struct DHUB_CFGQ *pCfgQ, int size)

@@ -323,7 +323,6 @@ struct ISP_BE_SCL {
 	INT     m_iStatus;          //Status of SCL
 	INT     m_sclHwStatus;          //HW Status of SCL
 	struct ISP_REQUEST_QUEUE m_sclOutFrameQ; //Frames processed
-	struct ISP_REQUEST_QUEUE m_sclProcessFrameQ; //Frames in process
 	struct mutex isr_lock;
 	struct ISP_BE_SCL_OBJ *isp_be_scl_obj[MAX_SCL_OBJECTS];
 	SHM_HANDLE scl_handle[MAX_SCL_OBJECTS];

@@ -18,6 +18,7 @@
 
 #undef ENABLE_SCALER_REG_DUMP
 #define ALIGN_SIZE(value, alignment) (((value) + (alignment - 1)) & ~(alignment - 1))
+#define DNS_TIMEOUT_COUNTER 100
 
 static void scalerIntrHandlerCallback(struct ISP_BE_RQST_MSG *rqstMsg)
 {
@@ -155,7 +156,7 @@ HRESULT scaler_api_close(void *pScaler)
 {
 	HRESULT result  = SUCCESS;
 	struct scaler_drv_ctx *pscaler_drv_ctx = (struct scaler_drv_ctx *)pScaler;
-	UINT8 uWaitCnt = 16;
+	UINT8 uWaitCnt = DNS_TIMEOUT_COUNTER;
 
 	WARN_ON(!pscaler_drv_ctx);
 	scaler_print("[CLOSE]\n");
@@ -461,11 +462,6 @@ HRESULT scaler_api_pushBuf(struct scaler_drv_ctx *pscaler_drv_ctx,
 			pscaler_drv_ctx->instance_id, pRqstMsg);
 	if (result != SUCCESS)
 		goto error_push;
-
-	scaler_print("ISPBE_MODULE_PushRequest results: %d\n", result);
-	if (result == ISPSS_EHARDWAREBUSY) { /* scaler driver pushes to its Q and returns busy */
-		result = SUCCESS;
-	}
 
 	scaler_print("[PUSH] Success\n");
 

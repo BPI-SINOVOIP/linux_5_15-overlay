@@ -78,7 +78,6 @@ static INT ISPSS_BE_SCL_Init(void)
 	//Initialize Output Queue
 	isp_rqstq_reset(&(g_isp_be_scl->m_sclOutFrameQ));
 	//Initialize Process Queue
-	isp_rqstq_reset(&(g_isp_be_scl->m_sclProcessFrameQ));
 	g_isp_be_scl->bcmbufQ.queueCfg.maxQueueLen = 6;
 	g_isp_be_scl->bcmbufQ.queueCfg.maxBcmBuf = 2;
 	g_isp_be_scl->bcmbufQ.queueCfg.bcmBufSize = BCM_BUFFER_SIZE;
@@ -111,8 +110,6 @@ static void ISPSS_BE_SCL_ResetClient(INT index, INT priority)
 	isp_rqstq_reset(&(g_isp_be_scl->isp_be_scl_obj[index]->m_queue.InRqstQ));
 	g_isp_be_scl->isp_be_scl_obj[index]->m_queue.OutRqstQ
 		= &(g_isp_be_scl->m_sclOutFrameQ);
-	g_isp_be_scl->isp_be_scl_obj[index]->m_queue.ProcessRqstQ
-		= &(g_isp_be_scl->m_sclProcessFrameQ);
 #ifdef ISP_RQSTQ_LOCK_ENABLE
 	mutex_init(&(g_isp_be_scl->isp_be_scl_obj[index]->m_queue.InRqstQ.isp_rqstq_lock));
 #endif
@@ -308,20 +305,13 @@ static INT  ISPSS_BE_SCL_Close(INT clientID)
 	}
 	isp_be_scl_obj = GET_SCL_OBJ(clientID);
 	if (isp_be_scl_obj == NULL) {
+		BE_SCL_LOGE("%s: NO DNS client found for this\n", __func__);
 		Ret = ISPSS_ENODEV;
 		goto e_DNSCL_Close;
 	}
-
-	/* If H/W is still processing the frame can't close the object now */
-	if (isp_be_scl_obj->m_queue.ProcessQCnt) {
-		Ret = ISPSS_EHARDWAREBUSY;
-		goto e_DNSCL_Close;
-	}
-
-	/* If closing client has any of its buffers pending to be processed in
-	 * any of the Queues don't allow to close
-	 */
-	if (isp_be_scl_obj->m_queue.InputQCnt || isp_be_scl_obj->m_queue.OutputQCnt) {
+	if (isp_be_scl_obj->m_queue.OutputQCnt != 0) {
+		BE_SCL_LOGE("%s: The output queue is not empty %d\n", __func__,
+				isp_be_scl_obj->m_queue.OutputQCnt);
 		Ret = ISPSS_EQNOTEMPTY;
 		goto e_DNSCL_Close;
 	}
@@ -336,7 +326,10 @@ static INT  ISPSS_BE_SCL_Close(INT clientID)
 	if (bFound == false) {
 		ISPSS_BE_MTR_Set_Global_Registers(ISPSS_BE_DNSCL_RD, false);
 		ISPSS_BE_MTR_Set_Global_Registers(ISPSS_BE_DNSCL_WR, false);
+		isp_rqstq_reset(&(g_isp_be_scl->m_sclOutFrameQ));
 	}
+
+	pr_debug("%s: with instance %d\n", __func__, clientID);
 
 e_DNSCL_Close:
 	return Ret;
@@ -515,7 +508,6 @@ static INT ISPSS_BE_SCL_SubmitToHardWare(struct ISP_BE_RQST_MSG *pstsclRqstMsg,
 	HRESULT Ret = ISPSS_OK;
 	struct ISP_BE_BCM *pSclBcmBuff =  &(pstsclRqstMsg->bcmBuf);
 
-	g_isp_be_scl->m_sclHwStatus = ISPSS_BE_SCL_HW_STATUS_RUNNING;
 	ISPSS_SCLDBG("Submitting BCM Buffer to HardWare\n");
 	/* Clear Cache for BCM buffers */
 	ISPSS_BE_SCL_BCM_ClearCache(pstsclRqstMsg);
@@ -537,7 +529,7 @@ static INT ISPSS_BE_SCL_SubmitToHardWare(struct ISP_BE_RQST_MSG *pstsclRqstMsg,
 		}
 	}
 exit:
-	return ISPSS_OK;
+	return Ret;
 }
 
 /*******************************************************************
@@ -614,181 +606,6 @@ static INT ISPSS_BE_SCL_PrepareRequest(struct ISP_BE_RQST_MSG *psclRqstMsg,
 	return Ret;
 }
 
-/*******************************************************************
- * FUNCTION: Get next request from the input Queue
- * PARAMS: psclObj - scl object
- * RiETURN: ISP_BE_RQST - Request message
- *
- ********************************************************************/
-static struct ISP_BE_RQST_MSG *ISPSS_BE_SCL_GetNextRequest(struct ISP_BE_SCL_OBJ **psclObj)
-{
-	INT index;
-	struct ISP_BE_RQST_MSG *pendRqstMsg = NULL;
-	struct ISP_BE_SCL_OBJ *sclObj = NULL;
-
-	//get the next request from the highest priority client
-	for (index = 0; index < MAX_SCL_OBJECTS; index++) {
-		sclObj = g_isp_be_scl->isp_be_scl_obj[index];
-		if (sclObj->m_iValid) {
-			if (sclObj->objStatus == ISPSS_BE_SCL_OBJ_STATUS_ACTIVE &&
-					sclObj->m_queue.InputQCnt >= 1) {
-				isp_rqstq_pop(&sclObj->m_queue.InRqstQ, (void **)&pendRqstMsg);
-				break;
-			}
-		}
-	}
-	*psclObj = sclObj;
-
-	return pendRqstMsg;
-}
-
-/*********************************************************************
- * FUNCTION: Process the frame for submitting to hardware
- * PARAMS:   psclRqstMsg - Scalar request structure pointer
- * RETURN:   ISPSS_OK
- ********************************************************************/
-static INT ISPSS_BE_SCL_ProcessRequest(struct ISP_BE_RQST_MSG *pendRqstMsg,
-		struct ISP_BE_SCL_OBJ *sclObj)
-{
-	INT index;
-	struct ISP_BE_RQST_MSG *processedRqstMsg = NULL;
-	int i = 5, val1 = 0, val2 = 0;
-
-	//0. Commit the previously processed frame to outputQ
-	if (isp_rqstq_pop(&g_isp_be_scl->m_sclProcessFrameQ, (void **)&processedRqstMsg))
-		isp_rqstq_pop_commit(&g_isp_be_scl->m_sclProcessFrameQ);
-
-	if (processedRqstMsg) {
-		isp_rqstq_push(&g_isp_be_scl->m_sclOutFrameQ, processedRqstMsg);
-		g_isp_be_scl->isp_be_scl_obj[processedRqstMsg->m_BuffID]->m_queue.ProcessQCnt--;
-		g_isp_be_scl->isp_be_scl_obj[processedRqstMsg->m_BuffID]->m_queue.OutputQCnt++;
-		ISPSS_SCLDBG_BCMQ("%s:%d, processedRqstMsg = %p moved to outputq\n\r",
-			__func__, __LINE__, processedRqstMsg);
-	}
-
-	/*1. Get the next request to be processed */
-	if ((pendRqstMsg == NULL) || (sclObj == NULL)) {
-		/*get the next request from the highest priority client */
-		for (index = 0; index < MAX_SCL_OBJECTS; index++) {
-			sclObj = g_isp_be_scl->isp_be_scl_obj[index];
-			if ((sclObj != NULL) && (sclObj->m_iValid)) {
-				if (sclObj->objStatus == ISPSS_BE_SCL_OBJ_STATUS_ACTIVE &&
-						sclObj->m_queue.InputQCnt >= 1) {
-					isp_rqstq_pop(&sclObj->m_queue.InRqstQ,
-						(void **)&pendRqstMsg);
-					isp_rqstq_pop_commit(&sclObj->m_queue.InRqstQ);
-					sclObj->m_queue.InputQCnt--;
-					ISPSS_SCLDBG_BCMQ("%s:%d, RqstMsg = %p moved out of q\n\r",
-						__func__, __LINE__, pendRqstMsg);
-					break;
-				}
-			}
-		}
-	}
-
-	if (pendRqstMsg) {
-		if (pendRqstMsg->pCurrBcmBuf == NULL &&
-			(processedRqstMsg && processedRqstMsg->pCurrBcmBuf)) {
-			/* If BCMBUF is not preallocated, then reuse
-			 * the one released in this interrupt
-			 */
-			pendRqstMsg->pCurrBcmBuf = processedRqstMsg->pCurrBcmBuf;
-			ISPSS_SCLDBG_BCMQ("%s:%d, bcmbufitem = %p is swapped to rqstmsg %p\n\r",
-				__func__, __LINE__,
-				processedRqstMsg->pCurrBcmBuf, pendRqstMsg);
-			processedRqstMsg->pCurrBcmBuf = NULL;
-		}
-
-		/*2. If BCM is not prepared then prepare it now */
-		if (pendRqstMsg->bcm_prepared == 0)
-			ISPSS_BE_SCL_PrepareRequest(pendRqstMsg, sclObj);
-
-		/*3. Only if SubmitHw is set BCM buffers are submitted to hardware */
-		if (pendRqstMsg->SubmitHw) {
-			ISPSS_BE_SCL_SubmitToHardWare(pendRqstMsg, sclObj);
-			while (i--) {
-				ISPSS_REG_READ32(0xF91A0038, &val1);
-				ISPSS_REG_READ32(0xF91A0238, &val2);
-
-				pr_debug("%s: 0xF91A0038: 0x%X, 0xF91A0238: 0x%X\n",
-						__func__, val1, val2);
-			}
-
-			/* Keep a copy of the processed frame
-			 * This will be used to comare with current frame properties
-			 * which inturn useful to reduce the BCM writes
-			 */
-			memcpy(g_prvsclRqstMsg, pendRqstMsg, sizeof(struct ISP_BE_RQST_MSG));
-			//Move to processed queue and move to out queue in next ISR
-			isp_rqstq_push(&g_isp_be_scl->m_sclProcessFrameQ, pendRqstMsg);
-			sclObj->m_queue.ProcessQCnt++;
-			ISPSS_SCLDBG_BCMQ("%s:%d, RqstMsg = %p moved into processq\n\r",
-				__func__, __LINE__, pendRqstMsg);
-		}
-	} else {
-		/*If no more frame to process, then move to IDLE state */
-		g_isp_be_scl->m_sclHwStatus = ISPSS_BE_SCL_HW_STATUS_IDLE;
-	}
-	if (processedRqstMsg && processedRqstMsg->pCurrBcmBuf) {
-		//If the current BCMBUF is not required, then recycle it
-		ISPSS_BCMBUF_QUEUE_push(&g_isp_be_scl->bcmbufQ, processedRqstMsg->pCurrBcmBuf);
-		ISPSS_SCLDBG_BCMQ("%s:%d, bucbufitem %p pushed back to bcmq\n\r",
-			__func__, __LINE__, processedRqstMsg->pCurrBcmBuf);
-		//Ensure that internal BCMBUF is not leaked out to the caller
-		processedRqstMsg->pCurrBcmBuf = NULL;
-	}
-	if (!(g_isp_be_scl->commit_QId == SCL_COMMIT_QUEUE_ID_12 ||
-		g_isp_be_scl->commit_QId == SCL_COMMIT_QUEUE_ID_13)) {
-		//Submit as much s possible (Max 2 since BCMQ depth is 2) to BCMQ
-		while (1) {
-			int bcmQFullStatus = 0;
-
-			//get the next request from the highest priority client
-			pendRqstMsg = ISPSS_BE_SCL_GetNextRequest(&sclObj);
-			if (pendRqstMsg) {
-				isp_rqstq_pop_commit(&sclObj->m_queue.InRqstQ);
-				sclObj->m_queue.InputQCnt--;
-			}
-
-			//get the free BCMBUF
-			if (pendRqstMsg && !pendRqstMsg->pCurrBcmBuf)
-				ISPSS_BCMBUF_QUEUE_pop_and_commit(&g_isp_be_scl->bcmbufQ,
-						(void **)&pendRqstMsg->pCurrBcmBuf);
-
-			//Check hardware BCMBQ status
-			BCM_SCHED_GetFullSts(ISPSS_SCL_BCMQ_ID, &bcmQFullStatus);
-
-			//Prepare & Submit only if valid next request, BCM and BCMQ is avialable
-			if (!bcmQFullStatus && pendRqstMsg && pendRqstMsg->pCurrBcmBuf) {
-				if (pendRqstMsg->bcm_prepared == 0)
-					ISPSS_BE_SCL_PrepareRequest(pendRqstMsg, sclObj);
-				if (pendRqstMsg->SubmitHw) {
-					ISPSS_BE_SCL_SubmitToHardWare(pendRqstMsg, sclObj);
-
-					/* Keep a copy of the processed frame
-					 * This will be used to comare with current frame properties
-					 * which inturn useful to reduce the BCM writes
-					 */
-					memcpy(g_prvsclRqstMsg, pendRqstMsg,
-						sizeof(struct ISP_BE_RQST_MSG));
-					/* Move to the ProcessQ now and move to the output queue
-					 * in the ISR, after getting processed
-					 */
-					isp_rqstq_push(&g_isp_be_scl->m_sclProcessFrameQ,
-						pendRqstMsg);
-					sclObj->m_queue.ProcessQCnt++;
-				}
-			} else {
-				//Cannot proceed further to submit
-				break;
-			}
-		}
-	}
-
-	return ISPSS_OK;
-}
-
-
 /*********************************************************************
  * FUNCTION: Push a frame for scalar processing
  * PARAMS:   psclRqstMsg - Scalar request structure pointer
@@ -797,22 +614,21 @@ static INT ISPSS_BE_SCL_ProcessRequest(struct ISP_BE_RQST_MSG *pendRqstMsg,
 static INT ISPSS_BE_SCL_PushRequest(INT clientID, struct ISP_BE_RQST_MSG *psclRqstMsg)
 {
 	HRESULT Ret = ISPSS_OK;
-	struct ISP_BE_RQST_MSG *pendRqstMsg = NULL;
+	struct ISP_BE_SCL_OBJ *isp_scl_obj = g_isp_be_scl->isp_be_scl_obj[psclRqstMsg->m_BuffID];
 
 	ISPSS_DEBUG_LOG_SCL("Entry\n");
 
 	/*Print Filled Request Structure */
 	printMsg(psclRqstMsg);
 
-	mutex_lock(&g_isp_be_scl->isr_lock);
 	/*Validate All the parameters are correct*/
 	Ret = ISPSS_BE_SCL_ValidateRqstMsg(psclRqstMsg);
 	if (Ret != ISPSS_OK) {
-		ISPSS_SCLDBG("ERRNUM:%d ,%s ,%d\n", Ret, __func__, __LINE__);
+		BE_SCL_LOGE("ERRNUM:%d ,%s ,%d\n", Ret, __func__, __LINE__);
+		Ret = ISPSS_EBADPARAM;
 		goto e_SCLPushRequest;
 	}
-	Ret = fillObjectDetails(psclRqstMsg,
-			g_isp_be_scl->isp_be_scl_obj[psclRqstMsg->m_BuffID]);
+	Ret = fillObjectDetails(psclRqstMsg, isp_scl_obj);
 
 	psclRqstMsg->pBcmBuf = &(psclRqstMsg->bcmBuf); //Else Copy from pCurrBcmBuf fails
 
@@ -825,6 +641,7 @@ static INT ISPSS_BE_SCL_PushRequest(INT clientID, struct ISP_BE_RQST_MSG *psclRq
 	} else {
 		ISPSS_SCLDBG_BCMQ("%s:%d, BCMBUFITEM allocation unsuccessful\n",
 			__func__, __LINE__);
+		Ret = ISPSS_EBCMBUFFULL;
 		goto e_SCLPushRequest;
 	}
 
@@ -832,35 +649,29 @@ static INT ISPSS_BE_SCL_PushRequest(INT clientID, struct ISP_BE_RQST_MSG *psclRq
 	 * else prepare request for new/changed request
 	 */
 	if ((!psclRqstMsg->bcm_prepared))
-		ISPSS_BE_SCL_PrepareRequest(psclRqstMsg,
-			g_isp_be_scl->isp_be_scl_obj[psclRqstMsg->m_BuffID]);
+		ISPSS_BE_SCL_PrepareRequest(psclRqstMsg, isp_scl_obj);
 
 	/* 3. If H/W is still processing then push the frame into
 	 * client queue and return immediately
 	 */
-	if ((!psclRqstMsg->bcm_prepared) ||
-		(g_isp_be_scl->m_sclHwStatus == ISPSS_BE_SCL_HW_STATUS_RUNNING)) {
-		/*Push the Rqst msg to input Queue */
-		isp_rqstq_push(
-			&(g_isp_be_scl->isp_be_scl_obj[psclRqstMsg->m_BuffID]->m_queue.InRqstQ),
-				psclRqstMsg);
-		g_isp_be_scl->isp_be_scl_obj[psclRqstMsg->m_BuffID]->m_queue.InputQCnt++;
-		Ret = ISPSS_EHARDWAREBUSY;
-		ISPSS_SCLDBG("%s: Line No %d\n", __func__, __LINE__);
-		ISPSS_SCLDBG("%s: Line No %d nframes:%d\n", __func__, __LINE__,
-		g_isp_be_scl->isp_be_scl_obj[psclRqstMsg->m_BuffID]->m_queue.InputQCnt);
-		goto e_SCLPushRequest;
-	} else
-		pendRqstMsg = psclRqstMsg;
-
-	/*4. Only if dwp_SubmitHw is set, then ProcessRequest = Prepare + submit */
-	if (pendRqstMsg->SubmitHw) {
-		Ret = ISPSS_BE_SCL_ProcessRequest(pendRqstMsg,
-				g_isp_be_scl->isp_be_scl_obj[psclRqstMsg->m_BuffID]);
-		ISPSS_SCLDBG("PROCESS REQUEST DONE\n");
+	if (psclRqstMsg->SubmitHw) {
+		mutex_lock(&g_isp_be_scl->isr_lock);
+		Ret = ISPSS_BE_SCL_SubmitToHardWare(psclRqstMsg, isp_scl_obj);
+		if (Ret == ISPSS_OK) {
+			g_isp_be_scl->m_sclHwStatus = ISPSS_BE_SCL_HW_STATUS_RUNNING;
+			if (isp_rqstq_push(&g_isp_be_scl->m_sclOutFrameQ, psclRqstMsg)) {
+				isp_scl_obj->m_queue.OutputQCnt++;
+			} else {
+				BE_SCL_LOGE("%s: Failed to push into Queue\n", __func__);
+				Ret = ISPSS_EOUTQFULL;
+			}
+			ISPSS_BCMBUF_QUEUE_push(&g_isp_be_scl->bcmbufQ, psclRqstMsg->pCurrBcmBuf);
+		} else {
+			BE_SCL_LOGE("%s: Failed to submit request to BCM\n", __func__);
+		}
+		mutex_unlock(&g_isp_be_scl->isr_lock);
 	}
 e_SCLPushRequest:
-	mutex_unlock(&g_isp_be_scl->isr_lock);
 	ISPSS_DEBUG_LOG_SCL("Exit\n");
 
 	return Ret;
@@ -875,10 +686,6 @@ static INT ISPSS_BE_SCL_ProcessISR(UINT32 intrNum, void *arg)
 {
 	ISPSS_DEBUG_LOG_SCL("Entry\n");
 
-	mutex_lock(&g_isp_be_scl->isr_lock);
-	//2. Process the next available request
-	ISPSS_BE_SCL_ProcessRequest(NULL, NULL);
-	mutex_unlock(&g_isp_be_scl->isr_lock);
 	if (g_isp_be_scl->IntrHandler)
 		(*g_isp_be_scl->IntrHandler)(g_isp_be_scl->IntCnt++,
 			g_isp_be_scl->IntrHandlerArgs);
@@ -898,23 +705,31 @@ static INT ISPSS_BE_SCL_PopRequest(struct ISP_BE_RQST_MSG **psclRqstMsg)
 	//Pop Request from Queue
 	struct ISP_BE_RQST_MSG *rqstMsg = NULL;
 	struct ISP_BE_SCL_OBJ *isp_scl_obj = NULL;
+	int ret = ISPSS_OK;
 
+
+	mutex_lock(&g_isp_be_scl->isr_lock);
+	if (g_isp_be_scl->m_sclHwStatus == ISPSS_BE_SCL_HW_STATUS_IDLE)
+		goto err;
 	if (isp_rqstq_pop(&(g_isp_be_scl->m_sclOutFrameQ), (void **)&rqstMsg)) {
 		isp_rqstq_pop_commit(&(g_isp_be_scl->m_sclOutFrameQ));
 		isp_scl_obj = GET_SCL_OBJ(rqstMsg->m_BuffID);
 		isp_scl_obj->m_queue.OutputQCnt--;
+		g_isp_be_scl->m_sclHwStatus = ISPSS_BE_SCL_HW_STATUS_IDLE;
 	} else {
 		BE_SCL_LOGE("%s:No frames in out queue\n", __func__);
-		return ISPSS_ENOMEM;
+		ret = ISPSS_ENOMEM;
+		goto err;
 	}
 	if (!psclRqstMsg) {
 		BE_SCL_LOGE("%s:Invalid parameter\n", __func__);
-		return ISPSS_EBADPARAM;
+		ret = ISPSS_EBADPARAM;
+		goto err;
 	}
-
+err:
 	*psclRqstMsg = rqstMsg;
-
-	return ISPSS_OK;
+	mutex_unlock(&g_isp_be_scl->isr_lock);
+	return ret;
 }
 
 /***********************************************
