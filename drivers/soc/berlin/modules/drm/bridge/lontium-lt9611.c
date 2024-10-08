@@ -40,6 +40,9 @@ struct lt9611 {
 	bool sleep;
 	struct i2c_client *client;
 	u32 vic;
+
+	struct gpio_desc *reset_gpio;
+	struct gpio_desc *enable_gpio;
 };
 static struct lt9611 *lt9611;
 static struct i2c_board_info bridge_i2c_info = {
@@ -528,6 +531,20 @@ int syna_bridge_probe(struct platform_device *pdev, SYNA_BRIDGE_FUNC_TABLE *psyn
 		ret = PTR_ERR(lt9611->regmap);
 		goto EXIT_STAGE_I2C_INIT;
 	}
+
+	lt9611->enable_gpio = devm_fwnode_get_index_gpiod_from_child(&pdev->dev,
+						"enable", 0,
+						of_fwnode_handle(lt9611_dev->of_node),
+						GPIOD_OUT_HIGH, "lt9611-enable");
+	if (PTR_ERR(lt9611->enable_gpio) == -EPROBE_DEFER)
+		return -EPROBE_DEFER;
+
+	lt9611->reset_gpio = devm_fwnode_get_index_gpiod_from_child(&pdev->dev,
+						"reset", 0,
+						of_fwnode_handle(lt9611_dev->of_node),
+						GPIOD_OUT_LOW, "lt9611-reset");
+	if (PTR_ERR(lt9611->reset_gpio) == -EPROBE_DEFER)
+		return -EPROBE_DEFER;
 
 	if(lt9611_init(lt9611)) {
 		ret = -EFAULT;
