@@ -165,7 +165,7 @@ DHDCFLAGS += -DWAIT_FOR_DISCONNECT_MAX=20
 # DHDCFLAGS += -DWL_STATIC_IF
 
 # Wapi
-DHDCFLAGS += -DBCMWAPI_WPI -DBCMWAPI_WAI
+# DHDCFLAGS += -DBCMWAPI_WPI -DBCMWAPI_WAI
 
 # FBT
 DHDCFLAGS += -DWLFBT
@@ -465,6 +465,9 @@ DHDCFLAGS += -DDUAL_ESCAN_RESULT_BUFFER
 # NAN
 # DHDCFLAGS += -DWL_NAN -DWL_NAN_DISC_CACHE -DWL_NANP2P
 
+# CSI support
+DHDCFLAGS += -DCSI_SUPPORT
+
 # SAR Tx power scenario
 # DHDCFLAGS += -DWL_SAR_TX_POWER
 
@@ -721,7 +724,7 @@ DHDOFILES := dhd_pno.o dhd_common.o dhd_ip.o dhd_custom_gpio.o \
     dhd_pno.o dhd_rtt.o dhd_linux_pktdump.o wl_cfg_btcoex.o hnd_pktq.o \
     hnd_pktpool.o wl_cfgvendor.o bcmxtlv.o bcm_app_utils.o dhd_debug.o \
     dhd_debug_linux.o wl_cfgnan.o dhd_mschdbg.o bcmbloom.o dhd_dbg_ring.o bcmstdlib_s.o frag.o \
-    dhd_linux_exportfs.o dhd_linux_tx.o hndjtag.o
+    dhd_linux_exportfs.o dhd_linux_tx.o hndjtag.o dhd_csi.o
 
 # This file will be here only for internal builds and sets flags which may
 # affect subsequent behavior. See extended comment within it for details.
@@ -733,10 +736,6 @@ DHDOFILES += $(BCMINTERNAL_DHDOFILES)
 
 # extra Source files
 DHDOFILES += wl_roam.o
-
-ifneq ($(CONFIG_ARCH_HISI),)
-	DHDOFILES += dhd_custom_hikey.o
-endif
 
 DHDOFILES += dhd_custom_syna.o
 

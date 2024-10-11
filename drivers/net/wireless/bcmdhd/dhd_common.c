@@ -156,6 +156,10 @@
 #endif
 #endif /* DHD_LOG_DUMP */
 
+#ifdef CSI_SUPPORT
+#include <dhd_csi.h>
+#endif /* CSI_SUPPORT */
+
 #ifdef DHD_LOG_PRINT_RATE_LIMIT
 int log_print_threshold = 0;
 #endif /* DHD_LOG_PRINT_RATE_LIMIT */
@@ -489,6 +493,10 @@ enum {
 #ifdef DHD_LOGLEVEL
 	IOV_LOGLEVEL,
 #endif /* DHD_LOGLEVEL */
+#ifdef CSI_SUPPORT
+	IOV_CSI_VERSION,
+	IOV_CSI_CONFIG,
+#endif /* CSI_SUPPORT */
 	IOV_LAST
 };
 
@@ -650,6 +658,10 @@ const bcm_iovar_t dhd_iovars[] = {
 #ifdef DHD_LOGLEVEL
 	{"loglevel", IOV_LOGLEVEL, (0), 0, IOVT_BUFFER, sizeof(dhd_loglevel_data_t)},
 #endif /* DHD_LOGLEVEL */
+#ifdef CSI_SUPPORT
+	{"csi_version",			IOV_CSI_VERSION,	0,	0,	IOVT_UINT8,	sizeof(uint32)},
+	{"csi_config",			IOV_CSI_CONFIG,		0,	0,	IOVT_BUFFER,	sizeof(uint32)},
+#endif /* CSI_SUPPORT */
 	/* --- add new iovars *ABOVE* this line --- */
 	{NULL, 0, 0, 0, 0, 0 }
 };
@@ -3773,6 +3785,19 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		break;
 	}
 
+
+#ifdef CSI_SUPPORT
+	case IOV_GVAL(IOV_CSI_VERSION):
+		bcmerror = dhd_csi_version(dhd_pub, arg, val_size, FALSE);
+		break;
+	case IOV_GVAL(IOV_CSI_CONFIG):
+		bcmerror = dhd_csi_config(dhd_pub, arg, val_size, FALSE);
+		break;
+	case IOV_SVAL(IOV_CSI_CONFIG):
+		bcmerror = dhd_csi_config(dhd_pub, arg, val_size, TRUE);
+		break;
+#endif /* CSI_SUPPORT */
+
 	default:
 		bcmerror = BCME_UNSUPPORTED;
 		break;
@@ -5049,6 +5074,13 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 		DHD_EVENT(("MACEVENT: %s: Country code changed to %s\n", event_name,
 			(char*)event_data));
 		break;
+#if defined(CSI_SUPPORT)
+	case WLC_E_CSI:
+		/* do not process here as the whole CSI event will
+		 * be direclty pass to CSI module for processing
+		 */
+		break;
+#endif /* CSI_SUPPORT */
 	default:
 		DHD_INFO(("MACEVENT: %s %d, MAC %s, status %d, reason %d, auth %d\n",
 		       event_name, event_type, eabuf, (int)status, (int)reason,

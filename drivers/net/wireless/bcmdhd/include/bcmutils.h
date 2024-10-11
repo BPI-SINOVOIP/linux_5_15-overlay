@@ -1482,6 +1482,10 @@ int valid_bcmerror(int e);
 /* Used to pass in a macro variable that gets expanded and then stringified */
 #define BCM_EXTENDED_STRINGIFY(s) BCM_STRINGIFY(s)
 
+extern uint32 ip_cksum_partial(uint32 sum, uint8 *val8, uint32 count);
+/* calculate IP checksum */
+extern uint16 ip_cksum(uint32 sum, uint8 *val8, uint32 count);
+
 /* calculate IPv4 header checksum
  * - input ip points to IP header in network order
  * - output cksum is in network order

@@ -253,6 +253,9 @@ static const bcmevent_name_str_t bcmevent_names[] = {
 #ifdef WL_TWT
 	BCMEVENT_NAME(WLC_E_TWT),
 #endif /* WL_TWT */
+#ifdef CSI_SUPPORT
+	BCMEVENT_NAME(WLC_E_CSI),
+#endif /* CSI_SUPPORT */
 };
 
 const char *bcmevent_get_name(uint event_type)

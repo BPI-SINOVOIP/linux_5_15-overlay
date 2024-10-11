@@ -394,6 +394,7 @@ typedef struct dhd_info {
 	struct semaphore fw_download_lock;
 #endif /* BCMDBUS */
 #endif /* defined(BCM_DNGL_EMBEDIMAGE) || defined(BCM_REQUEST_FW) */
+	uint32 flag_kobj;    /* Add for duplicate kobj processing */
 	struct kobject dhd_kobj;
 	timer_list_compat_t timesync_timer;
 #if defined(BT_OVER_SDIO)

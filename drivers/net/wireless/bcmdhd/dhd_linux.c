@@ -258,6 +258,10 @@ static void dhd_blk_tsfl_handler(struct work_struct * work);
 #include <bcmproto.h>
 #endif /* defined(DHD_TX_PROFILE) */
 
+#ifdef CSI_SUPPORT
+#include <dhd_csi.h>
+#endif /* CSI_SUPPORT */
+
 #ifdef SET_RANDOM_MAC_SOFTAP
 #ifndef CONFIG_DHD_SET_RANDOM_MAC_VAL
 #define CONFIG_DHD_SET_RANDOM_MAC_VAL	0x001A11
@@ -5264,6 +5268,14 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 				continue;
 			}
 #endif /* SHOW_LOGTRACE */
+#ifdef CSI_SUPPORT
+			if (WLC_E_CSI == event_type) {
+				DHD_TRACE(("%s: WLC_E_CSI\n", __func__));
+				dhd_csi_event_enqueue(dhdp, ifidx, pktbuf);
+				continue;
+			}
+#endif /* CSI_SUPPORT */
+
 
 			ret_event = dhd_wl_host_event(dhd, ifidx, pkt_data, len, &event, &data);
 
@@ -9999,6 +10011,11 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 #ifdef DHD_WET
 	dhd->pub.wet_info = dhd_get_wet_info(&dhd->pub);
 #endif /* DHD_WET */
+
+#ifdef CSI_SUPPORT
+	dhd_csi_init(&dhd->pub);
+#endif /* CSI_SUPPORT */
+
 	/* Initialize thread based operation and lock */
 	sema_init(&dhd->sdsem, 1);
 
@@ -13906,6 +13923,9 @@ dhd_legacy_preinit_ioctls(dhd_pub_t *dhd)
 	setbit(mask, WLC_E_DELTS_IND);
 #endif /* WL_BCNRECV */
 	setbit(mask, WLC_E_COUNTRY_CODE_CHANGED);
+#ifdef CSI_SUPPORT
+	setbit(mask, WLC_E_CSI);
+#endif /* CSI_SUPPORT */
 
 	/* Write updated Event mask */
 	eventmask_msg->ver = EVENTMSGS_VER;
@@ -15585,6 +15605,10 @@ void dhd_detach(dhd_pub_t *dhdp)
 #endif
 
 	(void)dhd_deinit_sock_flows_buf(dhd);
+
+#ifdef CSI_SUPPORT
+	dhd_csi_deinit(dhdp);
+#endif /* CSI_SUPPORT */
 
 #ifdef DHD_DUMP_MNGR
 	if (dhd->pub.dump_file_manage) {

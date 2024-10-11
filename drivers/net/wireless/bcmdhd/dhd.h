@@ -1826,6 +1826,29 @@ typedef struct dhd_pub {
 #ifdef SUPPORT_OTA_UPDATE
 	ota_update_info_t ota_update_info;
 #endif /* SUPPORT_OTA_UPDATE */
+#ifdef CSI_SUPPORT
+	struct mutex         csi_lock;
+
+	struct sk_buff_head  csi_raw_skb_queue     ____cacheline_aligned;
+	struct work_struct   csi_raw_skb_work;
+
+	struct list_head     csi_list;
+	uint                 csi_count;
+
+	uint8                csi_init;
+	uint8                csi_version_capability;
+	uint8                csi_header_output_version;
+
+	uint16               csi_data_send_manner;
+	uint16               csi_notify_port;
+	uint32               csi_notify_ip;
+	uint32               csi_local_ip;
+
+	int32                packet_global_id_last;
+	uint32               padding_global_id;
+	uint32               packet_qty_duplicate;
+	uint32               packet_qty_missing;
+#endif /* CSI_SUPPORT */
 } dhd_pub_t;
 
 #if defined(__linux__)

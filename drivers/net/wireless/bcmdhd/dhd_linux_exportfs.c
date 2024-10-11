@@ -55,6 +55,9 @@
 #ifdef WL_CFG80211
 #include <wl_cfg80211.h>
 #endif /* WL_CFG80211 */
+#ifdef CSI_SUPPORT
+#include <dhd_csi.h>
+#endif /* CSI_SUPPORT */
 
 #ifdef SHOW_LOGTRACE
 extern dhd_pub_t* g_dhd_pub;
@@ -2589,10 +2592,46 @@ static struct kobj_type dhd_lb_ktype = {
 };
 #endif /* DHD_LB */
 
+#ifdef BCMPCIE
+#define CONST_SYNA_DHD_KOBJ_NAME       "wifi_pcie"
+#define CONST_SYNA_DHD_LB_OBJ_NAME     "lb_pcie"
+#else /* BCMSDIO */
+#define CONST_SYNA_DHD_KOBJ_NAME       "wifi_sdio"
+#define CONST_SYNA_DHD_LB_OBJ_NAME     "lb_sdio"
+#endif /* BCMPCIE */
+
+#ifdef CSI_SUPPORT
+#define CONST_SYNA_DHD_CSI_OBJ_NAME    "csi"
+
+/* Function to show current ccode */
+static ssize_t read_csi_data(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *bin_attr, char *buf, loff_t off, size_t count)
+{
+	dhd_info_t *dhd = to_dhd(kobj);
+	int n = 0;
+
+	n = dhd_csi_data_queue_polling(&dhd->pub, buf, (uint)count);
+	DHD_TRACE(("Dump data to file, size %d\n", n));
+
+	return n;
+}
+
+static struct bin_attribute dhd_attr_csi = {
+	.attr = {
+		.name = CONST_SYNA_DHD_CSI_OBJ_NAME,
+		.mode = 0660
+	},
+	.size = CONST_CSI_SYS_FILE_SIZE_MAX,
+	.read = read_csi_data,
+};
+#endif /* CSI_SUPPORT */
+
 /* Create a kobject and attach to sysfs interface */
 int dhd_sysfs_init(dhd_info_t *dhd)
 {
 	int ret = -1;
+
+	dhd->flag_kobj = 0x0;
 
 	if (dhd == NULL) {
 		DHD_ERROR(("%s(): dhd is NULL \r\n", __FUNCTION__));
@@ -2600,11 +2639,13 @@ int dhd_sysfs_init(dhd_info_t *dhd)
 	}
 
 	/* Initialize the kobject */
-	ret = kobject_init_and_add(&dhd->dhd_kobj, &dhd_ktype, NULL, "wifi");
+	ret = kobject_init_and_add(&dhd->dhd_kobj, &dhd_ktype, NULL, CONST_SYNA_DHD_KOBJ_NAME);
 	if (ret) {
 		kobject_put(&dhd->dhd_kobj);
 		DHD_ERROR(("%s(): Unable to allocate kobject \r\n", __FUNCTION__));
 		return ret;
+	} else {
+		dhd->flag_kobj |= 0x01;
 	}
 
 	/*
@@ -2620,10 +2661,22 @@ int dhd_sysfs_init(dhd_info_t *dhd)
 		kobject_put(&dhd->dhd_lb_kobj);
 		DHD_ERROR(("%s(): Unable to allocate kobject \r\n", __FUNCTION__));
 		return ret;
+	} else {
+		dhd->flag_kobj |= 0x02;
 	}
 
 	kobject_uevent(&dhd->dhd_lb_kobj, KOBJ_ADD);
 #endif /* DHD_LB */
+
+#ifdef CSI_SUPPORT
+	ret = sysfs_create_bin_file(&dhd->dhd_kobj, &dhd_attr_csi);
+	if (ret) {
+		DHD_ERROR(("%s: can't create %s\n", __func__, dhd_attr_csi.attr.name));
+		return ret;
+	} else {
+		dhd->flag_kobj |= 0x04;
+	}
+#endif /* CSI_SUPPORT */
 
 	return ret;
 }
@@ -2636,12 +2689,24 @@ void dhd_sysfs_exit(dhd_info_t *dhd)
 		return;
 	}
 
+#ifdef CSI_SUPPORT
+	if (0x04 & dhd->flag_kobj) {
+		sysfs_remove_bin_file(&dhd->dhd_kobj, &dhd_attr_csi);
+	}
+#endif /* CSI_SUPPORT */
+
 #ifdef DHD_LB
+	if (0X02 & dhd->flag_kobj) {
 	kobject_put(&dhd->dhd_lb_kobj);
+	}
 #endif /* DHD_LB */
 
 	/* Releae the kobject */
-	kobject_put(&dhd->dhd_kobj);
+	if (0X01 & dhd->flag_kobj) {
+		kobject_put(&dhd->dhd_kobj);
+	}
+
+	dhd->flag_kobj = 0X0;
 }
 
 #ifdef DHD_SUPPORT_HDM
