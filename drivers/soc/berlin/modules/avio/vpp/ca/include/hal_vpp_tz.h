@@ -38,7 +38,7 @@ int TZ_MV_VPPOBJ_SetDisplayMode(int planeID, int mode);
 int TZ_MV_VPPOBJ_DisplayFrame(int planeID, void *frame);
 int TZ_MV_VPPOBJ_SetRefWindow(int planeID, VPP_WIN *win);
 int TZ_MV_VPPOBJ_SetRefWindowFromISR(int planeID, VPP_WIN *win);
-int TZ_MV_VPPOBJ_ChangeDispWindow(int planeID, VPP_WIN *win, VPP_WIN_ATTR *attr);
+int TZ_MV_VPPOBJ_ChangeDispWindow(int planeID, VPP_WIN *win, VPP_WIN_ATTR *attr, bool isFromISR);
 int TZ_MV_VPPOBJ_SetPlaneMute(int planeID, int mute);
 int TZ_MV_VPPOBJ_ChangeZOrder(int cpcbID, VPP_ZORDER_CTRL *pZorderCtrl);
 int TZ_MV_VPPOBJ_GetZOrder(int cpcbID, VPP_ZORDER_CTRL *pZorderCtrl);

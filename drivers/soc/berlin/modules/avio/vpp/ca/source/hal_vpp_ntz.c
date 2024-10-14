@@ -101,7 +101,7 @@ int NTZ_MV_VPPOBJ_SetRefWindow(int planeID, VPP_WIN *win)
 	return MV_VPP_OK;
 }
 
-int NTZ_MV_VPPOBJ_ChangeDispWindow(int planeID, VPP_WIN *win, VPP_WIN_ATTR *attr)
+int NTZ_MV_VPPOBJ_ChangeDispWindow(int planeID, VPP_WIN *win, VPP_WIN_ATTR *attr, bool isFromISR)
 {
 	return MV_VPP_OK;
 }

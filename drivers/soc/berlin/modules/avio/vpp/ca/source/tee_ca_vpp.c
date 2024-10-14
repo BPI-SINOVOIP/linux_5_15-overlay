@@ -957,7 +957,7 @@ int VPP_CA_SetRefWinFromISR(int PlaneId, int WinX, int WinY, int WinW, int WinH)
 	return operation.params[3].value.a;
 }
 
-int VPP_CA_ChangeDispWin(int PlaneId, int WinX, int WinY, int WinW, int WinH, int BgClr, int Alpha, ENUM_GLOBAL_ALPHA_FLAG globalAlphaFlag)
+int VPP_CA_ChangeDispWin(int PlaneId, int WinX, int WinY, int WinW, int WinH, int BgClr, int Alpha, ENUM_GLOBAL_ALPHA_FLAG globalAlphaFlag, bool isFromISR)
 {
 	int index;
 	TEEC_Session *pSession;
@@ -987,11 +987,10 @@ int VPP_CA_ChangeDispWin(int PlaneId, int WinX, int WinY, int WinW, int WinH, in
 	operation.params[3].value.b = 0xdeadbeef;
 
 	operation.started = 1;
-	result = InvokeCommandHelper(index,
-			pSession,
-			VPP_CHANGEDISPWIN,
-			&operation,
-			NULL);
+	if (isFromISR)
+		result = InvokeCommandHelper(index, pSession, VPP_CHANGEDISPWINFROMISR, &operation, NULL);
+	else
+		result = InvokeCommandHelper(index, pSession, VPP_CHANGEDISPWIN, &operation, NULL);
 	VPP_TEEC_LOGIFERROR(result);
 
 	return operation.params[3].value.b;

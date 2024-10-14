@@ -333,7 +333,7 @@ int TZ_MV_VPPOBJ_SetRefWindowFromISR(int planeID, VPP_WIN *win)
  *         MV_EUNSUPPORT - plane not connected in configuration
  *         MV_ECMDQFULL - command queue is full
  ******************************************************************************/
-int TZ_MV_VPPOBJ_ChangeDispWindow(int planeID, VPP_WIN *win, VPP_WIN_ATTR *attr)
+int TZ_MV_VPPOBJ_ChangeDispWindow(int planeID, VPP_WIN *win, VPP_WIN_ATTR *attr, bool isFromISR)
 {
 	HRESULT Ret = MV_VPP_OK;
 	int params[8];
@@ -375,7 +375,8 @@ int TZ_MV_VPPOBJ_ChangeDispWindow(int planeID, VPP_WIN *win, VPP_WIN_ATTR *attr)
 			params[4],
 			params[5],
 			params[6],
-			params[7]);
+			params[7],
+			isFromISR);
 
 	return Ret;
 

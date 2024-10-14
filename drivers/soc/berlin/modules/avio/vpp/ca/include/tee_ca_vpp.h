@@ -51,7 +51,7 @@ int VPP_CA_SetRefWin(int PlaneId, int WinX, int WinY, int WinW, int WinH);
 int VPP_CA_SetRefWinFromISR(int PlaneId, int WinX, int WinY, int WinW, int WinH);
 int VPP_CA_OpenDispWin(int PlaneId, int WinX, int WinY, int WinW, int WinH, int BgClr, int Alpha);
 int VPP_CA_ChangeDispWin(int PlaneId, int WinX, int WinY, int WinW, int WinH,
-						 int BgClr, int Alpha, ENUM_GLOBAL_ALPHA_FLAG globalAlphaFlag);
+						 int BgClr, int Alpha, ENUM_GLOBAL_ALPHA_FLAG globalAlphaFlag, bool isFromISR);
 int VPP_CA_RecycleFrame(int PlaneId);
 int VPP_CA_SetDispMode(int PlaneId, int Mode);
 int VPP_CA_HdmiSetVidFmt(int ColorFmt, int BitDepth, int PixelRep);

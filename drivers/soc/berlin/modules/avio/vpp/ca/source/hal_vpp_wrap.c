@@ -249,13 +249,13 @@ int wrap_MV_VPPOBJ_SetRefWindowFromISR(int planeID, VPP_WIN *win)
 	return retVal;
 }
 
-int wrap_MV_VPPOBJ_ChangeDispWindow(int planeID, VPP_WIN *win, VPP_WIN_ATTR *attr)
+int wrap_MV_VPPOBJ_ChangeDispWindow(int planeID, VPP_WIN *win, VPP_WIN_ATTR *attr, bool isFromISR)
 {
 	DHUB_CTX *hDhubCtx = (DHUB_CTX *) avio_sub_module_get_ctx(AVIO_MODULE_TYPE_DHUB);
 	int retVal = 0;
 
 	if (hDhubCtx->isTeeEnabled)
-		retVal = TZ_MV_VPPOBJ_ChangeDispWindow(planeID, win, attr);
+		retVal = TZ_MV_VPPOBJ_ChangeDispWindow(planeID, win, attr, isFromISR);
 
 	return retVal;
 }

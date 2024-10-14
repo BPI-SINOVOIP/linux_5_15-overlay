@@ -827,7 +827,7 @@ int VPP_CA_SetRefWinFromISR(int PlaneId, int WinX, int WinY, int WinW, int WinH)
 	return ret;
 }
 
-int VPP_CA_ChangeDispWin(int PlaneId, int WinX, int WinY, int WinW, int WinH, int BgClr, int Alpha, ENUM_GLOBAL_ALPHA_FLAG globalAlphaFlag)
+int VPP_CA_ChangeDispWin(int PlaneId, int WinX, int WinY, int WinW, int WinH, int BgClr, int Alpha, ENUM_GLOBAL_ALPHA_FLAG globalAlphaFlag, bool isFromISR)
 {
 	int ret;
 	struct tee_param param[4];
@@ -855,7 +855,10 @@ int VPP_CA_ChangeDispWin(int PlaneId, int WinX, int WinY, int WinW, int WinH, in
 	/* clear result */
 	param[3].u.value.b = 0xdeadbeef;
 
-	ret = InvokeCommandHelper(index, pSession, VPP_CHANGEDISPWIN, param, 4);
+	if (isFromISR)
+		ret = InvokeCommandHelper(index, pSession, VPP_CHANGEDISPWINFROMISR, param, 4);
+	else
+		ret = InvokeCommandHelper(index, pSession, VPP_CHANGEDISPWIN, param, 4);
 	if (!ret) {
 		ret = param[3].u.value.b;
 	}
