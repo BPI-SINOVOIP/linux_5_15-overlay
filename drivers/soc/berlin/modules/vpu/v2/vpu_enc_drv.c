@@ -629,6 +629,10 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 {
 	struct syna_vcodec_ctx *ctx = fh_to_ctx(priv);
 
+	// TA will take care of cache ops on ES buf once buf is finished.
+	if (buf->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
+		buf->flags |= V4L2_BUF_FLAG_NO_CACHE_INVALIDATE;
+
 	return v4l2_m2m_qbuf(file, ctx->fh.m2m_ctx, buf);
 }
 
@@ -1074,16 +1078,12 @@ static void vb2ops_venc_buf_queue(struct vb2_buffer *vb)
 			vpu_buf->bytesused[i] = vb2_get_plane_payload(vb, i);
 			if (vb2_syna_bm_has_cache_carer(vb, i))
 				vpu_buf->planes[i].gfp_flags |=
-					BERLIN_GFP_FLAG_CACHE_DONE;
+					BERLIN_GFP_FLAG_NO_CACHE_CLEAN;
 		}
 
 	} else if (test_bit(SYNA_VPU_STATUS_SET_FMT, &ctx->status)) {
 		vpu_buf = ctx->output_pool;
 		vpu_buf += vb->index;
-
-		if (vb2_syna_bm_has_cache_carer(vb, 0))
-			vpu_buf->planes[0].gfp_flags |=
-				BERLIN_GFP_FLAG_CACHE_DONE;
 
 		if (syna_venc_push_es_buf(ctx, vb->index))
 			return;
@@ -1324,6 +1324,7 @@ queue_init(void *priv, struct vb2_queue *src_vq, struct vb2_queue *dst_vq)
 	    DMA_ATTR_NO_KERNEL_MAPPING;
 	src_vq->buf_struct_size = 0;
 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
+	src_vq->allow_cache_hints = 1;
 	src_vq->lock = &ctx->vpu->mutex;
 	src_vq->dev = ctx->vpu->v4l2_dev.dev;
 
@@ -1340,6 +1341,7 @@ queue_init(void *priv, struct vb2_queue *src_vq, struct vb2_queue *dst_vq)
 	dst_vq->lock = &ctx->vpu->mutex;
 	dst_vq->dev = ctx->vpu->v4l2_dev.dev;
 	dst_vq->bidirectional = true;
+	dst_vq->allow_cache_hints = 1;
 	dst_vq->mem_ops = &syna_bm_dh_memops;
 	dst_vq->dma_attrs = DMA_ATTR_ALLOC_SINGLE_PAGES |
 	    DMA_ATTR_NO_KERNEL_MAPPING;

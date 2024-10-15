@@ -80,7 +80,8 @@ typedef unsigned long long u64;
 #define BERLIN_BUF_V4G_MVTP_PLANE_IDX		(4U)
 
 #define BERLIN_GFP_FLAG_NO_MAPPING		0x20000000
-#define BERLIN_GFP_FLAG_CACHE_DONE		0x10000000
+#define BERLIN_GFP_FLAG_NO_CACHE_INVALIDATE	0x10000000
+#define BERLIN_GFP_FLAG_NO_CACHE_CLEAN		0x08000000
 
 #define BERLIN_VPU_CFG_RESERVED_SIZE		(256U)
 #define BERLIN_VPU_CTX_RESERVED_SIZE		(4096U)
@@ -196,7 +197,7 @@ enum syna_frame_field {
 };
 
 /* ***VPU firmware APIs begins here*** */
-/* VPU Firmware version: 34692 */
+/* VPU Firmware version: 34693 */
 #ifdef __KERNEL__
 enum syna_dec_channel
 {
