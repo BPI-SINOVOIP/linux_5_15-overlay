@@ -192,10 +192,10 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 
-		en_wifi {
+		sdio_mux {
 			gpio-hog;
 			gpios = <0 GPIO_ACTIVE_LOW>;
-			output-low;
+			output-high;
 		};
 	};
 
@@ -390,6 +390,7 @@
 	dll-calibration;
 };
 
+/*
 &sdhci1 {
 	status = "okay";
 	pinctrl-0 = <&sdhci1_pmux>;
@@ -404,6 +405,22 @@
 	mmc-pwrseq = <&sdhci1_pwrseq>;
 	mode1-tune;
 	keep-power-in-suspend;
+};
+*/
+
+&sdhci1 {
+	status = "okay";
+	pinctrl-0 = <&sdhci1_pmux>;
+	pinctrl-names = "default";
+	bus-width = <4>;
+	sdclkdl-dc = /bits/ 8 <75>;
+	pad-sp = /bits/ 8 <4>;
+	pad-sn = /bits/ 8 <4>;
+	no-sdio;
+	no-mmc;
+	disable-wp;
+	vmmc-supply = <&vmmc_sdhci1>;
+	vqmmc-supply = <&vqmmc_sdhci1>;
 };
 
 &spi1 {
