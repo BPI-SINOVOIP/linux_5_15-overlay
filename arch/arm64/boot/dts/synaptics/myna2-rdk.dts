@@ -149,6 +149,13 @@
 		};
 	};
 
+	expander4: gpio@44 {
+		compatible = "fcs,fxl6408";
+		reg = <0x44>;
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+
 	ina3221@40{
 		compatible = "ti,ina3221";
 		reg = <0x40>;
@@ -698,7 +705,9 @@
 
 	dsi_hdmi_lt9611_bridge {
 		compatible = "syna-bridge,lt9611";
-		i2c_bus = <0>;
+		enable-gpio =  <&expander4 6 GPIO_ACTIVE_HIGH>;
+		reset-gpio =  <&expander4 4 GPIO_ACTIVE_LOW>;
+		i2c_bus = <1>;
 	};
 };
 
