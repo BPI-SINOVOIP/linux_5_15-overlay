@@ -16,6 +16,7 @@
 
 static mrvl_frame_size curr_input_frame_size[MAX_NUM_PLANES];
 static VPP_DISP_OUT_PARAMS curr_disp_res_params[MAX_NUM_CPCBS];
+static bool IsCpcbResolutionSet[MAX_NUM_CPCBS];
 vpp_config_params vpp_config_param = { 0 };
 
 int MV_VPP_make_frame_data(unsigned int iVideo, unsigned int *pStartAddr,
@@ -160,39 +161,41 @@ int MV_VPP_SetDisplayResolution(ENUM_CPCB_ID cpcbID,
 			curr_disp_res_params[cpcbID].uiBitDepth != dispParams.uiBitDepth ||
 			curr_disp_res_params[cpcbID].uiColorFmt != dispParams.uiColorFmt) {
 
-		/* First : put CPCB TG to reset before setting new timing */
-		res = wrap_MV_VPPOBJ_GetBlockStatus(VPP_BLOCK_CPCB_TG, cpcbID, &status);
-		if (res) {
-			pr_err("%s %d> CPCB Status get failed\n", __FUNCTION__, __LINE__);
-			return res;
+		if (IsCpcbResolutionSet[cpcbID]) {
+			/* First : put CPCB TG to reset before setting new timing */
+			res = wrap_MV_VPPOBJ_GetBlockStatus(VPP_BLOCK_CPCB_TG, cpcbID, &status);
+			if (res) {
+				pr_err("%s %d> CPCB Status get failed\n", __FUNCTION__, __LINE__);
+				return res;
+			}
+
+			if (status != STATUS_INACTIVE) {
+				res = dispParams.uiResId;
+				dispParams.uiResId = RES_RESET;
+				wrap_MV_VPPOBJ_SetFormat(cpcbID, &dispParams);
+				dispParams.uiResId = res;
+
+				/* Wait until CPCB TG is reset, otherwise timeout after 100 ms */
+				do {
+					res = wrap_MV_VPPOBJ_GetBlockStatus(VPP_BLOCK_CPCB_TG, cpcbID, &status);
+					if (status == STATUS_INACTIVE)
+						break;
+					else
+						msleep(VPP_CPCBTG_RESET_LOOP_DELAY_MS);
+
+					wait_count--;
+				} while (wait_count);
+			}
+
+			if (!wait_count) {
+				pr_err("%s %d> Reset Failed\n", __FUNCTION__, __LINE__);
+				return MV_VPP_EIOFAIL;
+			}
 		}
-
-		if (status != STATUS_INACTIVE) {
-			res = dispParams.uiResId;
-			dispParams.uiResId = RES_RESET;
-			wrap_MV_VPPOBJ_SetFormat(cpcbID, &dispParams);
-			dispParams.uiResId = res;
-
-			/* Wait until CPCB TG is reset, otherwise timeout after 100 ms */
-			do {
-				res = wrap_MV_VPPOBJ_GetBlockStatus(VPP_BLOCK_CPCB_TG, cpcbID, &status);
-				if (status == STATUS_INACTIVE)
-					break;
-				else
-					msleep(VPP_CPCBTG_RESET_LOOP_DELAY_MS);
-
-				wait_count--;
-			} while (wait_count);
-		}
-
-		if (!wait_count) {
-			pr_err("%s %d> Reset Failed\n", __FUNCTION__, __LINE__);
-			return MV_VPP_EIOFAIL;
-		}
-
 		memcpy(&curr_disp_res_params[cpcbID], &dispParams, sizeof(VPP_DISP_OUT_PARAMS));
 
 		if (bApply) {
+			IsCpcbResolutionSet[cpcbID] = 1;
 			//SetDisplayWindow applied to all planes by SetFormat
 			wrap_MV_VPPOBJ_GetCPCBOutputPixelClock(dispParams.uiResId, &pixel_clock);
 
