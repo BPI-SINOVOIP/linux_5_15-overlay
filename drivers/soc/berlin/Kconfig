@@ -101,12 +101,6 @@ config POWERVR_ROGUE
 	help
 	  Imagination gpu driver for android
 
-config POWERVR_ROGUE_WS
-	tristate "PowerVR rogue Linux window system driver"
-	default n
-	help
-	  Imagination gpu driver for Linux window system
-
 config BERLIN_OVP
 	tristate "Support OVP"
 	default n

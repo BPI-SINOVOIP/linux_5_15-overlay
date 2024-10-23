@@ -9,7 +9,6 @@ obj-$(CONFIG_BERLIN_TSP)  += modules/tsp/
 obj-$(CONFIG_BERLIN_AVIO) += modules/avio/
 obj-$(CONFIG_BERLIN_AOUT) += modules/aout/
 obj-$(CONFIG_POWERVR_ROGUE) += modules/rogue/
-obj-$(CONFIG_POWERVR_ROGUE_WS) += modules/rogue_ws/
 obj-$(CONFIG_BERLIN_OVP) += modules/ovp/
 obj-$(CONFIG_BERLIN_SCRD) += modules/smartcard/
 obj-$(CONFIG_BERLIN_VPP) += modules/vpp/
