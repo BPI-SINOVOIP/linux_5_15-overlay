@@ -685,6 +685,9 @@ static UINT32 ISPSS_BE_MTR_GetStride(UINT32 m_srcfmt, UINT32 *stride_64B, UINT32
 		else
 			*stride_64B = DIV_ROUND_UP(((pictureWidth*10) / 8), 256) * 4;
 		break;
+	case ISPSS_SRCFMT_RGB888:
+		*stride_64B = DIV_ROUND_UP(pictureWidth * 3, 256) * 4;
+		break;
 	case ISPSS_SRCFMT_YUV422SP_DWA:
 	case ISPSS_SRCFMT_YUV420SP_DWA:
 		*stride_64B = DIV_ROUND_UP(pictureWidth, 192) * 4;
@@ -727,6 +730,7 @@ static UINT32 ISPSS_BE_MTR_GetMtrFmtandMode(UINT32 m_srcfmt, UINT32 m_bits_per_p
 	case ISPSS_SRCFMT_YUV444P:
 	case ISPSS_SRCFMT_YUV422SP_DWA:
 	case ISPSS_SRCFMT_YUV420SP_DWA:
+	case ISPSS_SRCFMT_RGB888:
 		if (m_bits_per_pixel == 8) {
 			*fmt  = MTR_header_meta_format_V1H4V16;
 			*mode = luma ? E_MTR_mode_8b_v1_y : E_MTR_mode_8b_v1_uv;

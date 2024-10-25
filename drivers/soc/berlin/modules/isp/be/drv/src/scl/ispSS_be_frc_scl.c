@@ -234,6 +234,10 @@ static void ISPSS_SCL_MainSclCalTaps(struct ISP_BE_SCL_OBJ *isp_scl_obj,
 			vTaps = 6;
 
 	}
+
+	if ((isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888) && (pIORes->OHRes > 960))
+		vTaps = 2;
+
 	*phTap = hTaps;
 	*pvTap = vTaps;
 	ISPSS_SCLDBG("%s,%d, Htaps:%d Vtaps:%d OHRES:%d\n",

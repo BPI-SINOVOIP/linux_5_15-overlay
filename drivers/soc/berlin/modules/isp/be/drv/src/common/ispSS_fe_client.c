@@ -48,6 +48,7 @@ static INT ISPSS_FE_CLIENT_GetWidthInBytes(UINT32 uiSrcFmt, UINT32 uiWidth, INT 
 		break;
 	case ISPSS_SRCFMT_RGB444:
 	case ISPSS_SRCFMT_YUV444P:
+	case ISPSS_SRCFMT_RGB888:
 		widthInBytes = (uiWidth * bpp * 3) / 8;
 		break;
 	case ISPSS_SRCFMT_YUV420SP_TILED_V8H8:
@@ -315,7 +316,8 @@ INT ISPSS_FE_RD_CLIENT_ClientConfigSCLInstance(struct BCMBUF *pbcmbuf, INT Chann
 		stReadClientCtrl1.uCTRL1_pixlineTot_R0 = uiWidth;
 		stReadClientCtrl1.uCTRL1_nonStdResEn_R0 = 0;
 
-		if ((uiSrcFmt == ISPSS_SRCFMT_YUV444P) || (uiSrcFmt == ISPSS_SRCFMT_RGB444))
+		if ((uiSrcFmt == ISPSS_SRCFMT_YUV444P) || (uiSrcFmt == ISPSS_SRCFMT_RGB444) ||
+				(uiSrcFmt == ISPSS_SRCFMT_RGB888))
 			stReadClientCtrl3.uCTRL3_wordTot_R0 =
 				(((uiWidth * 24) + 127) / 128) * uiHeight;
 		else if ((uiSrcFmt == ISPSS_SRCFMT_YUV422P) && (bpp == 8))

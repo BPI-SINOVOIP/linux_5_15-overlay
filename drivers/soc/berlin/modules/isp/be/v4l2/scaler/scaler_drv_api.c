@@ -339,11 +339,6 @@ static HRESULT scaler_fillRequest(struct scaler_drv_ctx *pscaler_drv_ctx,
 		goto error;
 	}
 
-	if (req->dst->bytesperline)
-		pRqstMsg->out_frame_Ystride = req->dst->bytesperline;
-	else
-		pRqstMsg->out_frame_Ystride = pRqstMsg->outwin.width;
-
 	pRqstMsg->pBcmBuf      = NULL;
 
 	pRqstMsg->out_mtrAddr_Y      = 0;
@@ -361,10 +356,16 @@ static HRESULT scaler_fillRequest(struct scaler_drv_ctx *pscaler_drv_ctx,
 	else
 		pRqstMsg->in_mtrMode         = 0;
 
-	if (req->io_mmu_buffer_capture)
+	if (req->io_mmu_buffer_capture) {
 		pRqstMsg->out_mtrMode        = 2;
-	else
+		/* MMU: output stride is 256 aligned */
+		pRqstMsg->out_frame_Ystride = ALIGN_SIZE(req->dst->width,
+				MTR_CONTENT_WIDTH_ALIGNMENT);
+	} else {
 		pRqstMsg->out_mtrMode        = 0;
+		/* non-IOMMU: output stride expects bytesperline */
+		pRqstMsg->out_frame_Ystride = req->dst->bytesperline;
+	}
 
 	if (pRqstMsg->in_mtrMode) {
 		/*  MMU input width is 256 aligned */

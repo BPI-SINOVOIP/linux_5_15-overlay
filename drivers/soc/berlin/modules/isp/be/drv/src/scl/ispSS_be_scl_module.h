@@ -49,7 +49,8 @@
 #define IS_SRC_FMT_PACKED(srcfmt)\
 	((srcfmt == ISPSS_SRCFMT_YUV444P)\
 	 || (srcfmt == ISPSS_SRCFMT_RGB444)\
-	 || (srcfmt == ISPSS_SRCFMT_YUV422P))
+	 || (srcfmt == ISPSS_SRCFMT_YUV422P)\
+	 || (srcfmt == ISPSS_SRCFMT_RGB888))
 
 #define IS_SRC_FMT_SP(srcfmt)\
 	((srcfmt == ISPSS_SRCFMT_YUV420SP)\

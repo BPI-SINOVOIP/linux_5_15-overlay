@@ -15,7 +15,8 @@
 //Internal Macros
 #define ISPSS_BE_SCL_SUBMIT_QUEUE
 #define IS_OTG_PROG_ENABLE(srcfmt) ((srcfmt == ISPSS_SRCFMT_YUV444P) \
-		|| (srcfmt ==  ISPSS_SRCFMT_RGB444) || (srcfmt ==  ISPSS_SRCFMT_YUV422P))
+		|| (srcfmt ==  ISPSS_SRCFMT_RGB444) || (srcfmt ==  ISPSS_SRCFMT_YUV422P) \
+		|| (srcfmt == ISPSS_SRCFMT_RGB888))
 #define MMU_STRIDE_LENGTH 262144
 //End Internal Macros
 #define bTST(x, b)                    (((x) >> (b)) & 1)
@@ -100,7 +101,11 @@ static void ISPSS_BE_SCL_SetOVPSCLTGParams(struct ISP_BE_SCL_OBJ *isp_scl_obj, U
 		uiRegAddr = isp_scl_obj->base_addr + RA_OVPDNSCLWRAP_OVPSCL_OTG_UV;
 
 	tg_size.uSIZE_Y = height+6;
-	tg_size.uSIZE_X = width+60; /* Changed from 20 to 40 to fix 4K SCL issues */
+	if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888)
+		tg_size.uSIZE_X = width + 10;
+	else
+		tg_size.uSIZE_X = width + 60; /* Changed from 20 to 60 to fix 4K SCL issues */
+
 	tg_hb.uHB_FE = tg_hb_cr.uHB_CR_FE = tg_hb_cr2.uHB_CR2_FE = width+8;
 	tg_hb.uHB_BE = tg_hb_cr.uHB_CR_BE = tg_hb_cr2.uHB_CR2_BE = 7;
 	tg_vb0.uVB0_FE = tg_vb0_cr.uVB0_CR_FE = tg_vb0_cr2.uVB0_CR2_FE = height + 1;//3;
@@ -129,6 +134,7 @@ static int ISPSS_BE_SCL_getAlignX(int src_fmt, int bit_depth, int mtrMode)
 	case ISPSS_SRCFMT_YUV422SP_DWA:
 	case ISPSS_SRCFMT_YUV420SP_DWA:
 	case ISPSS_SRCFMT_YUV444P:
+	case ISPSS_SRCFMT_RGB888:
 	default:
 		break;
 	}
@@ -372,10 +378,10 @@ INT ISPSS_BE_SCL_SubmitHW(struct ISP_BE_BCM *pSclBcmBuf, INT commit_QId)
 #ifdef ISPSS_BE_SCL_SUBMIT_QUEUE
 	// commit to the Q associated with DEWARP interrupt (Qx)
 	ISPSS_SCLDBG("%s:%d: Submitting to Q12\n", __func__, __LINE__);
-	ret = ISPSS_BCMDHUB_CFGQ_Commit(pSclBcmBuf->final_bcm_cfgQ,
-			CPCB_1, commit_QId, 0);//12 is generic queue
+	ISPSS_BCMDHUB_CFGQ_Commit(pSclBcmBuf->final_bcm_cfgQ,
+			CPCB_1, commit_QId);//12 is generic queue
 #else
-	ret = ISPSS_BCMDHUB_CFGQ_Commit(pSclBcmBuf->final_bcm_cfgQ, CPCB_1, 13, 1);
+	ISPSS_BCMDHUB_CFGQ_Commit(pSclBcmBuf->final_bcm_cfgQ, CPCB_1, 13);
 #endif
 	return ret;
 }
@@ -646,6 +652,30 @@ static INT ISPSS_BE_SCL_ClientStart(struct ISP_BE_SCL_OBJ *isp_scl_obj,
 					ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf,
 							isp_scl_obj->base_addr +
 							RA_OVPDNSCLWRAP_CFG0, 0xD73C40);
+			}
+			if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888 &&
+					isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_RGB888) {
+				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf,
+						isp_scl_obj->base_addr +
+						RA_OVPDNSCLWRAP_CFG0, 0xD73C40);
+				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf,
+						isp_scl_obj->base_addr +
+						RA_OVPDNSCLWRAP_CFG0, 0xD73C50);
+				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf,
+						isp_scl_obj->base_addr +
+						RA_OVPDNSCLWRAP_CFG0, 0xD73C40);
+			}
+			if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888 &&
+					isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_YUV444P) {
+				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf,
+						isp_scl_obj->base_addr +
+						RA_OVPDNSCLWRAP_CFG0, 0xD73C40);
+				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf,
+						isp_scl_obj->base_addr +
+						RA_OVPDNSCLWRAP_CFG0, 0xD73C50);
+				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf,
+						isp_scl_obj->base_addr +
+						RA_OVPDNSCLWRAP_CFG0, 0xD73C40);
 			}
 			if ((isp_scl_obj->in_bit_depth == 8) &&
 					(isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV422P)) {
@@ -928,6 +958,12 @@ static void ISPSS_BE_SCL_programSclPipe(struct ISP_BE_BCM *pSclBcmBuf,
 			hwObjSt->ovpsclwrap_ctrl.uCTRL_luma_data_sel = 1;
 			hwObjSt->ovpsclwrap_ctrl.uCTRL_chroma_data_sel = 1;
 		}
+		if ((isp_scl_obj->in_bit_depth == 8) &&
+				(isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888)) {
+			hwObjSt->ovpsclwrap_ctrl.uCTRL_hde_msk_en = 1;
+			hwObjSt->ovpsclwrap_ctrl.uCTRL_luma_data_sel = 1;
+			hwObjSt->ovpsclwrap_ctrl.uCTRL_chroma_data_sel = 1;
+		}
 		if ((isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV420SP) ||
 				(isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV420SP_DWA)) {
 			hwObjSt->ovpsclwrap_ctrl.uCTRL_420sp_wrbk = 1;
@@ -944,7 +980,13 @@ static void ISPSS_BE_SCL_programSclPipe(struct ISP_BE_BCM *pSclBcmBuf,
 		else
 			hwObjSt->ovpsclwrap_ctrl.uCTRL_sclOutrdy_sts1_en = 1;
 
-		if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV444P) {
+		if (isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_YUV444P)
+			hwObjSt->ovpsclwrap_ctrl.uCTRL_sclOutrdy_sts1_en = 0;
+		if (isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_RGB888)
+			hwObjSt->ovpsclwrap_ctrl.uCTRL_sclOutrdy_sts1_en = 0;
+
+		if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV444P ||
+				isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888) {
 			hwObjSt->ovpsclwrap_ctrl.uCTRL_ofifo_sts0_ctrl = 1;
 			hwObjSt->ovpsclwrap_ctrl.uCTRL_ofifo_sts1_ctrl = 1;
 			hwObjSt->ovpsclwrap_ctrl.uCTRL_sclOfifo_Y_stsCtrl = 1;
@@ -961,7 +1003,8 @@ static void ISPSS_BE_SCL_programSclPipe(struct ISP_BE_BCM *pSclBcmBuf,
 		}
 		/*DITHER OVPDNSCL */
 		if ((isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV444P) ||
-				(isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV422SP)) {
+				(isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV422SP) ||
+				(isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888)) {
 			hwObjSt->ovp_dither.uCFG0_mode = 0;
 			hwObjSt->ovp_dither.uCFG0_ctrl = 2;
 			hwObjSt->ovp_dither.uCFG0_ycmode = 0;
@@ -1028,7 +1071,8 @@ static void ISPSS_BE_SCL_programSclPipe(struct ISP_BE_BCM *pSclBcmBuf,
 		} else {
 			hwObjSt->ovp_cfg0.uCFG0_clken_ctrl0 = 0;
 			if ((isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV444P) ||
-					(isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV422P)) {
+					(isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV422P) ||
+					(isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888)) {
 				//Read channel for Chroma is independent
 				hwObjSt->ovp_cfg0.uCFG0_clken_ctrl1 = 1;
 				hwObjSt->ovp_cfg0.uCFG0_uv_mask_disable = 1;
@@ -1051,10 +1095,12 @@ static void ISPSS_BE_SCL_programSclPipe(struct ISP_BE_BCM *pSclBcmBuf,
 		hwObjSt->ovp_cfg2.uCFG2_ififo_sts1_ctrl = 1;
 		hwObjSt->ovp_cfg2.uCFG2_fifo_full_ctrlEn = 1;
 
-		if ((isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV444P ||
-					isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV422P) &&
+		if (((isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV444P) ||
+					(isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV422P) ||
+					(isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888)) &&
 				((isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_YUV444P) ||
-				 (isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_YUV422P))) {
+				 (isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_YUV422P) ||
+				 (isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_RGB888))) {
 			hwObjSt->ovp_cfg2.uCFG2_UVPack_sel = 0;
 		} else {
 			hwObjSt->ovp_cfg2.uCFG2_UVPack_sel = 1;
@@ -1079,11 +1125,17 @@ static void ISPSS_BE_SCL_programSclPipe(struct ISP_BE_BCM *pSclBcmBuf,
 			hwObjSt->ovp_cfg8.uCFG8_uv422_444_sel = 1;
 			hwObjSt->ovp_cfg8.uCFG8_dither_bypass = 1;
 		}
+		if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888) {
+			hwObjSt->ovp_cfg8.uCFG8_uvrd_en_mask = 1;
+			hwObjSt->ovp_cfg8.uCFG8_uv422_444_sel = 1;
+			hwObjSt->ovp_cfg8.uCFG8_dither_bypass = 1;
+		}
 		if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV422P)
 			hwObjSt->ovp_cfg8.uCFG8_uv422_444_sel = 0;
 
 		if ((isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_YUV422P) ||
-				(isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_YUV444P)) {
+				(isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_YUV444P) ||
+				(isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_RGB888)) {
 			hwObjSt->ovp_cfg8.uCFG8_444_sel = 1;
 			hwObjSt->ovp_cfg8.uCFG8_sclOutrdy_sts1_en = 0;
 			hwObjSt->ovp_cfg8.uCFG8_scl_OFifoUV_aEmpCtrl = 1;
@@ -1111,10 +1163,14 @@ static void ISPSS_BE_SCL_programSclPipe(struct ISP_BE_BCM *pSclBcmBuf,
 				(isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_YUV444P)) {
 			hwObjSt->ovp_cfg8.uCFG8_pack_wrbk = 0;
 		}
-
-		if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV444P) {
+		if ((isp_scl_obj->output_bit_depth == 8) &&
+				(isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_RGB888)) {
+			hwObjSt->ovp_cfg8.uCFG8_pack_wrbk = 0;
+		}
+		if ((isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV444P) ||
+				(isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888)) {
 			ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf, (isp_scl_obj->base_addr
-					+ RA_OVPDNSCLWRAP_CFG0), 0xD73C40);
+						+ RA_OVPDNSCLWRAP_CFG0), 0xD73C40);
 		} else if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV422SP) {
 			ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf, (isp_scl_obj->base_addr
 					+ RA_OVPDNSCLWRAP_CFG0), 0x173840);
@@ -1136,18 +1192,41 @@ static void ISPSS_BE_SCL_programSclPipe(struct ISP_BE_BCM *pSclBcmBuf,
 					+ RA_OVPDNSCLWRAP_CFG2), hwObjSt->ovp_cfg2.u32);
 			} else if ((isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV444P) &&
 					(isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_YUV444P)) {
+				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf,
+						(isp_scl_obj->base_addr + RA_OVPDNSCLWRAP_CFG8),
+						hwObjSt->ovp_cfg8.u32);
 				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf, (isp_scl_obj->base_addr
-					+ RA_OVPDNSCLWRAP_CFG8), hwObjSt->ovp_cfg8.u32);
+							+ RA_OVPDNSCLWRAP_CTRL), 0x604537F);
 				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf, (isp_scl_obj->base_addr
-					+ RA_OVPDNSCLWRAP_CTRL), 0x604537F);
-				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf, (isp_scl_obj->base_addr
-					+ RA_OVPDNSCLWRAP_CFG2), 0x1FE7);
+							+ RA_OVPDNSCLWRAP_CFG2), 0x1FE7);
+			} else if ((isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888) &&
+					(isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_RGB888)) {
+				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf,
+						(isp_scl_obj->base_addr +
+						 RA_OVPDNSCLWRAP_CFG8), 0x18df0);
+				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf,
+						(isp_scl_obj->base_addr +
+						 RA_OVPDNSCLWRAP_CTRL), 0x604536F);
+				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf,
+						(isp_scl_obj->base_addr +
+						 RA_OVPDNSCLWRAP_CFG2), 0x1FE7);
+			} else if ((isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888) &&
+					(isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_YUV444P)) {
+				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf,
+						(isp_scl_obj->base_addr +
+						 RA_OVPDNSCLWRAP_CFG8), 0x18df0);
+				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf,
+						(isp_scl_obj->base_addr +
+						 RA_OVPDNSCLWRAP_CTRL), 0x604527F);
+				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf,
+						(isp_scl_obj->base_addr +
+						 RA_OVPDNSCLWRAP_CFG2), 0x1FE7);
 			} else if ((isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV422SP) &&
 					(isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_YUV422SP)) {
 				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf, (isp_scl_obj->base_addr
-					+ RA_OVPDNSCLWRAP_CFG8), 0xF40);
+							+ RA_OVPDNSCLWRAP_CFG8), 0xF40);
 				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf, (isp_scl_obj->base_addr
-					+ RA_OVPDNSCLWRAP_CTRL), 0x6845b7b);
+							+ RA_OVPDNSCLWRAP_CTRL), 0x6845b7b);
 				ISPSS_BCMBUF_Write(pSclBcmBuf->bcm_buf, (isp_scl_obj->base_addr
 					+ RA_OVPDNSCLWRAP_CFG2), 0x1FEF);
 			} else if ((isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV422SP) &&
@@ -1399,6 +1478,10 @@ static void ISPSS_BE_SCL_programSclPipe(struct ISP_BE_BCM *pSclBcmBuf,
 			ISPSS_SCLDBG("%s,%d,width:%d,output_bit_depth:%d\n",
 					__func__, __LINE__, stCfg2NDDMAParam.width,
 					isp_scl_obj->output_bit_depth);
+		} else if (isp_scl_obj->outSrcFrmt == ISPSS_SRCFMT_RGB888) {
+			stCfg2NDDMAParam.width  =
+				((isp_scl_obj->outputWin.width *
+				  isp_scl_obj->output_bit_depth * 3) + 7) / 8;
 		} else {
 
 		}
@@ -1607,7 +1690,8 @@ static void ISPSS_BE_SCL_programSclPipe(struct ISP_BE_BCM *pSclBcmBuf,
 		if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV422P) {
 			isp_scl_obj->in_win_stride = (((isp_scl_obj->contentWin.width *
 					isp_scl_obj->in_bit_depth * 2) + 127)/128) * 16;
-		} else if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV444P) {
+		} else if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV444P ||
+				isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888) {
 			isp_scl_obj->in_win_stride = (((isp_scl_obj->contentWin.width *
 					isp_scl_obj->in_bit_depth * 3) + 127)/128) * 16;
 		} else if ((isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV422SP_DWA) ||
@@ -1644,7 +1728,8 @@ static void ISPSS_BE_SCL_programSclPipe(struct ISP_BE_BCM *pSclBcmBuf,
 		else if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV422P) {
 			stCfgRd2NDDMAParam.width  = ((isp_scl_obj->inputWin.width *
 						isp_scl_obj->in_bit_depth * 2) + 7)/8;
-		} else if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV444P) {
+		} else if (isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_YUV444P ||
+				isp_scl_obj->inSrcFrmt == ISPSS_SRCFMT_RGB888) {
 			stCfgRd2NDDMAParam.width  = ((isp_scl_obj->inputWin.width *
 						isp_scl_obj->in_bit_depth * 3) + 7)/8;
 		} else {
