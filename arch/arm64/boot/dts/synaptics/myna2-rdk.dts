@@ -280,7 +280,6 @@
 		drive-strength = <6>;
 	};
 
-
 	sdio_pmux: sdio-pmux {
 		groups = "LCDGPIO3", "LCDGPIO4";
 		function = "sdio";
@@ -302,16 +301,6 @@
 		groups = "TW2_SCL", "TW2_SDA";
 		function = "tw2";
 		drive-strength = <7>;
-	};
-
-	gpio2_pmux: gpio2-pmux {
-		groups = "TDO";
-		function = "gpio";
-	};
-
-	expander2_pmux: expander2-pmux {
-		groups = "PWM2";
-		function = "gpio";
 	};
 
 	spi1_pmux: spi1-pmux {
@@ -354,11 +343,6 @@
 		function = "i2s2";
 	};
 
-	tlv_amp: tlv-amp-enable {
-		groups = "I2S2_DI";
-		function = "gpio";
-	};
-
 	pdm_pmux: pdm-pmux {
 		groups = "PDM_CLKIO", "PDM_DI0", "PDM_DI1";
 		function = "pdm";
@@ -391,7 +375,6 @@
 		function = "sdio";
 		drive-strength = <7>;
         };
-
 };
 
 &gpu {
@@ -632,7 +615,6 @@
 		platform-node = <&myna2_pcm>;
 	};
 };
-
 
 &drm {
 	status = "okay";
