@@ -206,6 +206,9 @@ static HRESULT scaler_disp2be_srcFmt(UINT32 dispFmt, enum ISPBE_ENUM_FMT *pBeFmt
 	case V4L2_PIX_FMT_RGB444:
 		*pBeFmt = ISPSS_SRCFMT_RGB444;
 		break;
+	case V4L2_PIX_FMT_RGB24:
+		*pBeFmt = ISPSS_SRCFMT_RGB888;
+		break;
 	default:
 		result = ISPSS_SRCFMT_MAX;
 		break;
@@ -244,6 +247,7 @@ static UINT32 getStride(int fmt, UINT32 uiWidth,
 		break;
 	case V4L2_PIX_FMT_YVU444M:
 	case V4L2_PIX_FMT_RGB444:
+	case V4L2_PIX_FMT_RGB24:
 		uiStride = uiWidth * 3;
 	default:
 		break;
@@ -274,6 +278,7 @@ static UINT32 scaler_getYUVSize(UINT32 dispFmt, UINT32 uiWidth, UINT32 height,
 		break;
 	case V4L2_PIX_FMT_YVU444M:
 	case V4L2_PIX_FMT_RGB444:
+	case V4L2_PIX_FMT_RGB24:
 		*pYSize = uiStride * height;
 		*pUVSize = 0;
 		break;

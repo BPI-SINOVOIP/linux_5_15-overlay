@@ -59,7 +59,14 @@ enum m2m_scaler_dev_flags {
 };
 
 static const struct m2m_scaler_fmt m2m_scaler_formats[] = {
-	/* NV12M. YUV420SP - 1 plane for Y + 1 plane for (CbCr) */
+	{
+		.pixelformat    = V4L2_PIX_FMT_RGB24,
+		.nb_planes      = 1,
+		.bpp            = 24,  // RGB24 has 24 bits per pixel
+		.bpp_plane0     = 8,   // 8 bits for each channel (R, G, B)
+		.w_align        = 2,
+		.h_align        = 2
+	},
 	{
 		.pixelformat    = V4L2_PIX_FMT_NV12M,
 		.nb_planes      = 2,
@@ -542,13 +549,17 @@ static int m2m_scaler_queue_setup(struct vb2_queue *vq,
 			return -ENOBUFS;
 	} else {
 		/* Assign the allocate device for buffer creation */
-		*nb_planes = 2;
+		if (frame->fmt->pixelformat == V4L2_PIX_FMT_RGB24)
+			*nb_planes = 1;
+		else
+			*nb_planes = 2;
 	}
 	switch (vq->type) {
 	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
 		mem_type = ctx->io_mmu_buffer_output ?
-		SHM_NONSECURE_NON_CONTIG : SHM_NONSECURE_CONTIG;
-		*nb_planes = ctx->output_buffer_memory_type ? 2 : 1;
+			SHM_NONSECURE_NON_CONTIG : SHM_NONSECURE_CONTIG;
+		if (frame->fmt->pixelformat != V4L2_PIX_FMT_RGB24)
+			*nb_planes = ctx->output_buffer_memory_type ? 2 : 1;
 		break;
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
 		mem_type = ctx->io_mmu_buffer_capture ?
@@ -832,7 +843,6 @@ static int m2m_scaler_try_fmt_out_mp(struct file *file, void *fh, struct v4l2_fo
 	u32 orig_width, orig_height;
 	int ret = 0;
 
-
 	if (ctx->output_buffer_memory_type == CONTIGOUS_MEMORY_TYPE &&
 			pix_mp->pixelformat == V4L2_PIX_FMT_NV12) {
 		dev_dbg(ctx->m2m_scaler_dev->dev, "contigous buffer req\n");
@@ -851,7 +861,6 @@ static int m2m_scaler_try_fmt_out_mp(struct file *file, void *fh, struct v4l2_fo
 	}
 
 	frame =  &ctx->src;
-
 	if (frame == NULL)
 		return -EINVAL;
 
@@ -874,6 +883,7 @@ static int m2m_scaler_try_fmt_out_mp(struct file *file, void *fh, struct v4l2_fo
 
 	m2m_scaler_check_contigous_memory_required(ctx, fmt->type, pix_mp);
 	print_v4l2_pix_format_mplane(pix_mp);
+
 	return ret;
 }
 
@@ -921,6 +931,7 @@ static int m2m_scaler_try_fmt_cap_mp(struct file *file, void *fh, struct v4l2_fo
 	pix_mp->field = V4L2_FIELD_NONE;
 
 	print_v4l2_pix_format_mplane(pix_mp);
+
 	return ret;
 }
 
@@ -929,7 +940,7 @@ static int m2m_scaler_s_fmt_mp(struct file *file, void *fh, struct v4l2_format *
 	struct m2m_scaler_ctx *ctx = fh_to_ctx(fh);
 	struct vb2_queue *vq;
 	struct frame_info *frame = NULL;
-	struct v4l2_pix_format_mplane *pix_mp;
+	struct v4l2_pix_format_mplane *pix_mp = &fmt->fmt.pix_mp;
 	int ret;
 
 	/* Try setting the format and validate based on buffer type */
@@ -942,6 +953,10 @@ static int m2m_scaler_s_fmt_mp(struct file *file, void *fh, struct v4l2_format *
 		return ret;
 	}
 
+	frame = ctx_get_frame(ctx, fmt->type);
+	if (frame == NULL)
+		return -EINVAL;
+
 	/* Get the V4L2 queue based on the buffer type */
 	vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx, fmt->type);
 	if (vb2_is_streaming(vq)) {
@@ -949,12 +964,7 @@ static int m2m_scaler_s_fmt_mp(struct file *file, void *fh, struct v4l2_format *
 		return -EBUSY;
 	}
 
-	frame = ctx_get_frame(ctx, fmt->type);
-	if (frame == NULL)
-		return -EINVAL;
-
 	/* Get pixel format details and validate */
-	pix_mp = &fmt->fmt.pix_mp;
 	frame->fmt = m2m_scaler_find_fmt(pix_mp->pixelformat);
 	if (!frame->fmt)
 		frame->fmt = &m2m_scaler_formats[0];
@@ -1038,6 +1048,10 @@ static int m2m_scaler_g_selection(struct file *file, void *fh,
 		return PTR_ERR(frame);
 	}
 
+	/* Crop not supported with RGB888 */
+	if (frame->fmt->pixelformat == V4L2_PIX_FMT_RGB24)
+		return -EINVAL;
+
 	switch (s->type) {
 	case V4L2_BUF_TYPE_VIDEO_OUTPUT:
 	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
@@ -1092,6 +1106,10 @@ static int m2m_scaler_s_selection(struct file *file, void *fh,
 		dev_dbg(ctx->m2m_scaler_dev->dev, "Invalid frame\n");
 		return PTR_ERR(frame);
 	}
+
+	/* Crop not supported with RGB888 */
+	if (frame->fmt->pixelformat == V4L2_PIX_FMT_RGB24)
+		return -EINVAL;
 
 	in = &s->r;
 	out = *in;
