@@ -409,7 +409,6 @@
 &spi1 {
 	status = "okay";
 	max-write-size = <128>;
-	clock-frequency = <200000000>;
 	pinctrl-0 = <&spi1_pmux>;
 	pinctrl-names = "default";
 };
@@ -417,7 +416,6 @@
 &spi2 {
 	status = "okay";
 	max-write-size = <128>;
-	clock-frequency = <200000000>;
 	pinctrl-0 = <&spi2_pmux>;
 	pinctrl-names = "default";
 
