@@ -160,7 +160,6 @@ struct syna_vcodec_ctx {
 	struct completion work_done;
 
 	struct list_head service_link;
-	unsigned long service_flags;
 
 #if IS_ENABLED(CONFIG_OPTEE)
 	struct tee_shm *ctrl_shm;

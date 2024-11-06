@@ -2410,7 +2410,10 @@ bail:
 			v4l2_m2m_try_schedule(m2m_ctx);
 			m2m_ctx = ctx->fh.m2m_ctx;
 		}
+	} else {
+		vpu_srv_schedule_no_yield(vpu->srv);
 	}
+
 	v4l2_m2m_job_finish(vpu->m2m_dev, m2m_ctx);
 	vdpu_dbg(vpu, 4, "[%p] finish switch %d\n", m2m_ctx, switchpoint);
 	complete(&ctx->work_done);
@@ -2480,6 +2483,7 @@ static int vdpu_driver_open(struct file *filp)
 	if (!ctx)
 		return -ENOMEM;
 
+	INIT_LIST_HEAD(&ctx->service_link);
 	fw_info = &vpu->fw_data.fw_info;
 	ctx->vpu = vpu;
 

@@ -33,6 +33,7 @@ int vpu_srv_release_out(struct syna_vpu_srv *node,
 			struct syna_vcodec_ctx **next_session);
 
 struct syna_vcodec_ctx* vpu_srv_schedule_pending(struct syna_vpu_srv *node);
+void vpu_srv_schedule_no_yield(struct syna_vpu_srv *node);
 
 /* NOTE: it won't disable irq, so don't call it in irq or softirq context */
 bool vpu_srv_clear_pending_isr(struct syna_vpu_srv *node);

@@ -19,14 +19,12 @@
 
 #include "vpu_srv.h"
 
-#define IN_PENDING	(1 << 0)
-#define HOLDING_TOKEN	(1 << 1)
-
 struct syna_vpu_srv {
 	struct syna_vpu_dev *vpu;
 	/* node structure global lock */
 	spinlock_t srv_spinlock;
 	struct list_head pending;
+	struct list_head successor;
 
 	/* service critical time(irq) */
 	struct completion ree_irq;
@@ -59,11 +57,12 @@ bool vpu_srv_push_to_pending(struct syna_vpu_srv *node,
 			return false;
 		}
 
-		/* srv has picked a candidate */
-		if (session->service_flags & HOLDING_TOKEN) {
-			reinit_completion(&session->work_done);
-			session->service_flags = 0;
+		if (session == list_first_entry(&node->successor,
+						struct syna_vcodec_ctx,
+						service_link)) {
+			list_del_init(&session->service_link);
 			spin_unlock_irqrestore(&node->srv_spinlock, flags);
+			reinit_completion(&session->work_done);
 			return false;
 		}
 
@@ -73,13 +72,11 @@ bool vpu_srv_push_to_pending(struct syna_vpu_srv *node,
 	}
 
 	atomic_inc(&node->wait_for_next);
-
-	if (session->service_flags & IN_PENDING)
-		return true;
-
-	session->service_flags = IN_PENDING;
 	spin_lock_irqsave(&node->srv_spinlock, flags);
-	list_add_tail(&session->service_link, &node->pending);
+
+	if (list_empty(&session->service_link))
+		list_add_tail(&session->service_link, &node->pending);
+
 	spin_unlock_irqrestore(&node->srv_spinlock, flags);
 
 	return true;
@@ -92,22 +89,25 @@ void vpu_srv_remove_from_pending(struct syna_vpu_srv *node,
 
 	spin_lock_irqsave(&node->srv_spinlock, flags);
 
-	if (session->service_flags & IN_PENDING) {
+	if (session == list_first_entry_or_null(&node->successor,
+						struct syna_vcodec_ctx,
+						service_link)) {
+		atomic_dec(&node->wait_for_next);
 		list_del_init(&session->service_link);
-		session->service_flags = 0;
+		atomic_inc(&node->switchpoint);
+	} else {
+		list_del_init(&session->service_link);
 	}
 
 	spin_unlock_irqrestore(&node->srv_spinlock, flags);
 }
 
 void vpu_srv_prepare_to_run(struct syna_vpu_srv *node,
-				struct syna_vcodec_ctx *session)
+			    struct syna_vcodec_ctx *session)
 {
 	struct syna_vpu_dev *vpu = node->vpu;
 	struct syna_vcodec_ctx *last_session;
 	unsigned long flags;
-
-	session->service_flags = 0;
 
 	spin_lock_irqsave(&node->srv_spinlock, flags);
 	last_session = node->last_session;
@@ -120,11 +120,11 @@ void vpu_srv_prepare_to_run(struct syna_vpu_srv *node,
 
 	spin_lock_irqsave(&node->srv_spinlock, flags);
 	node->last_session = session;
-	atomic_inc(&node->wait_for_next);
 	spin_unlock_irqrestore(&node->srv_spinlock, flags);
 
 }
 
+/* It should be only be called under the protection of m2m_dev->job_spinlock */
 struct syna_vcodec_ctx* vpu_srv_schedule_pending(struct syna_vpu_srv *node)
 {
 	struct syna_vpu_dev *vpu = node->vpu;
@@ -138,28 +138,33 @@ struct syna_vcodec_ctx* vpu_srv_schedule_pending(struct syna_vpu_srv *node)
 		 * no pending context, v4l2 framework could fight for the
 		 * token then.
 		 */
-		atomic_dec(&node->wait_for_next);
 		spin_unlock_irqrestore(&node->srv_spinlock, flags);
 		atomic_inc(&node->switchpoint);
 		session = NULL;
 	} else {
-		atomic_dec(&node->wait_for_next);
 		session = list_first_entry(&node->pending,
 					   struct syna_vcodec_ctx,
 					   service_link);
-		list_del_init(&session->service_link);
+		list_move(&session->service_link, &node->successor);
+		atomic_inc(&node->wait_for_next);
+
+		node->last_session = NULL;
 		spin_unlock_irqrestore(&node->srv_spinlock, flags);
 
 		vpu->fw_ops->fw_inst_swap(node->last_session, NULL);
-
-		spin_lock_irqsave(&node->srv_spinlock, flags);
-		node->last_session = NULL;
-		atomic_inc(&node->wait_for_next);
-		spin_unlock_irqrestore(&node->srv_spinlock, flags);
-		session->service_flags = HOLDING_TOKEN;
 	}
 
 	return session;
+}
+
+/* It should be only be called under the protection of m2m_dev->job_spinlock */
+void vpu_srv_schedule_no_yield(struct syna_vpu_srv *node)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&node->srv_spinlock, flags);
+	atomic_inc(&node->wait_for_next);
+	spin_unlock_irqrestore(&node->srv_spinlock, flags);
 }
 
 static inline struct syna_vcodec_ctx*
@@ -177,10 +182,9 @@ vpu_srv_release_schedule_next(struct syna_vpu_srv *node)
 		session = list_first_entry(&node->pending,
 					   struct syna_vcodec_ctx,
 					   service_link);
-		list_del_init(&session->service_link);
+		list_move(&session->service_link, &node->successor);
 		atomic_inc(&node->wait_for_next);
 		spin_unlock_irqrestore(&node->srv_spinlock, flags);
-		session->service_flags = HOLDING_TOKEN;
 	}
 
 	return session;
@@ -283,6 +287,7 @@ void *syna_srv_create(struct syna_vpu_dev *vpu)
 	node->vpu = vpu;
 	spin_lock_init(&node->srv_spinlock);
 	INIT_LIST_HEAD(&node->pending);
+	INIT_LIST_HEAD(&node->successor);
 	init_completion(&node->ree_irq);
 
 	atomic_set(&node->switchpoint, 1);

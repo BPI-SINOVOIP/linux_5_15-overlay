@@ -1302,7 +1302,10 @@ retry:
 		pending_ctx = vpu_srv_schedule_pending(vpu->srv);
 		if (pending_ctx)
 			v4l2_m2m_try_schedule(pending_ctx->fh.m2m_ctx);
+	} else {
+		vpu_srv_schedule_no_yield(vpu->srv);
 	}
+
 
 bail:
 	v4l2_m2m_job_finish(vpu->m2m_dev, ctx->fh.m2m_ctx);
@@ -1373,6 +1376,7 @@ static int vepu_driver_open(struct file *filp)
 		goto failed;
 	}
 
+	INIT_LIST_HEAD(&ctx->service_link);
 	fw_info = &vpu->fw_data.fw_info;
 	ctx->vpu = vpu;
 
