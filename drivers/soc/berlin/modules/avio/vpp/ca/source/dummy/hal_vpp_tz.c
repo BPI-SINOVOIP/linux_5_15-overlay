@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /* Copyright (C) 2023 Synaptics Incorporated */
 
+#include <linux/types.h>
 #include "hal_vpp.h"
 #include "hal_vpp_tz.h"
 
