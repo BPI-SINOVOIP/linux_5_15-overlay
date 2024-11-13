@@ -378,10 +378,10 @@ INT ISPSS_BE_SCL_SubmitHW(struct ISP_BE_BCM *pSclBcmBuf, INT commit_QId)
 #ifdef ISPSS_BE_SCL_SUBMIT_QUEUE
 	// commit to the Q associated with DEWARP interrupt (Qx)
 	ISPSS_SCLDBG("%s:%d: Submitting to Q12\n", __func__, __LINE__);
-	ISPSS_BCMDHUB_CFGQ_Commit(pSclBcmBuf->final_bcm_cfgQ,
+	ret =  ISPSS_BCMDHUB_CFGQ_Commit(pSclBcmBuf->final_bcm_cfgQ,
 			CPCB_1, commit_QId, BCM_NON_BLOCKING_WAIT);//12 is generic queue
 #else
-	ISPSS_BCMDHUB_CFGQ_Commit(pSclBcmBuf->final_bcm_cfgQ, CPCB_1, 13, BCM_BLOCKING_WAIT);
+	ret = ISPSS_BCMDHUB_CFGQ_Commit(pSclBcmBuf->final_bcm_cfgQ, CPCB_1, 13, BCM_BLOCKING_WAIT);
 #endif
 	return ret;
 }
