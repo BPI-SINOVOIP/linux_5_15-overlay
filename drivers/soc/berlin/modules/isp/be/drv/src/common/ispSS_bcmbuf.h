@@ -11,6 +11,9 @@
 
 #include "com_type.h"
 
+#define BCM_NON_BLOCKING_WAIT 0
+#define BCM_BLOCKING_WAIT 1
+
 struct DHUB_CFGQ {
 	UINT64 handle;
 	INT32 shm_offset;
