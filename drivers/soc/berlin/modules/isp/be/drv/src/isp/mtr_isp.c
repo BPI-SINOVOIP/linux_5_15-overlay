@@ -110,16 +110,16 @@ INT32 ISPSS_MTR_Set_Global_Registers(struct ISP_MTR_OBJ *mtrObj,
 		break;
 	case ISPSS_MTR_PATH_SP2_WR0:
 		ISPSS_REG_READ32(ispRemapReg + RA_Remap_Isp0WMtrFlag, &mtr_flag);
-		SET_BIT(mtr_flag, 1, ISP_WR3_SP2_Y_W_BIT, 1);
-		SET_BIT(mtr_flag, 1, ISP_WR3_SP2_CB_W_BIT, 1);
+		SET_BIT(mtr_flag, enable, ISP_WR3_SP2_Y_W_BIT, 1);
+		SET_BIT(mtr_flag, enable, ISP_WR3_SP2_CB_W_BIT, 1);
 		ISPSS_REG_WRITE32(ispRemapReg + RA_Remap_Isp0WMtrFlag, mtr_flag);
 		ISPSS_REG_WRITE32(ispRemapReg + RA_Remap_MtrTid + 0x18, 0x9); // Y thread Id
 		ISPSS_REG_WRITE32(ispRemapReg + RA_Remap_MtrTid + 0x1C, 0xa); // CbCr thread Id
 		break;
 	case ISPSS_MTR_PATH_SP2_WR1:
 		ISPSS_REG_READ32(ispRemapReg + RA_Remap_Isp0WMtrFlag + 4, &mtr_flag);
-		SET_BIT(mtr_flag, 1, ISP_WR3_SP2_Y_W_BIT, 1);
-		SET_BIT(mtr_flag, 1, ISP_WR3_SP2_CB_W_BIT, 1);
+		SET_BIT(mtr_flag, enable, ISP_WR3_SP2_Y_W_BIT, 1);
+		SET_BIT(mtr_flag, enable, ISP_WR3_SP2_CB_W_BIT, 1);
 		ISPSS_REG_WRITE32(ispRemapReg + RA_Remap_Isp0WMtrFlag + 4, mtr_flag);
 		ISPSS_REG_WRITE32(ispRemapReg + RA_Remap_MtrTid + 0x18 +
 			ISP_MTR_SENSOR1_OFFSET, 0x9); // Add 0x10 for Y thread Id

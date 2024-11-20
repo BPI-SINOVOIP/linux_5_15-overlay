@@ -20,6 +20,6 @@ INT32 ISPSS_MTR_ConfigureMtr(struct v4l2_format *f, uint32_t YBaseAddr,
 INT32 ISPSS_MTR_StartThread(struct ISPSS_MTR_CONFIG_PARAM *mtrConfigParam,
 		struct v4l2_format *f, uint32_t  YBaseAddr, uint32_t UVBaseAddr);
 void ISPSS_MTR_PrintInfo(struct ISPSS_MTR_CONFIG_PARAM *mtrConfigParam);
-void ISPSS_MTR_Exit(void);
+void ISPSS_MTR_Exit(uint32_t path);
 uint32_t ISPSS_MTR_QOS_Config(int config);
 #endif //MTR_ISP_WRAP_H__

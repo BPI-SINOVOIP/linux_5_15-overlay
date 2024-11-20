@@ -15,6 +15,7 @@
 #include "ispSS_shm.h"
 #include "ispbe_err.h"
 #include "ispSS_api_dhub.h"
+#include "mtr_isp.h"
 
 
 #define ISP_QUEUE0          BCM_SCHED_Q0
@@ -27,10 +28,6 @@
 #define ISP_INTR_SRC2      0x1F
 #define CSI_DEVICES_MAX    0x2
 #define BCM_MAX_BUFFERS    0x4
-
-#define ISP_MP0_PATH 1
-#define ISP_SP1_PATH 2
-#define ISP_SP2_PATH 3
 
 #define CONFIG_DOLPHIN_ISPSS_REGAREA_BASE          0xf9100000
 
@@ -45,6 +42,7 @@
 
 #define MEMMAP_ISP_BCM_REG_BASE  (CONFIG_DOLPHIN_ISPSS_REGAREA_BASE + \
 		ISPSS_MEMMAP_GLB_REG_BASE + RA_IspMISC_Isp2BcmIrq)
+
 #define MP_YCBCR_FRAME_END_BIT  0
 #define SP1_YCBCR_FRAME_END_BIT 3
 #define SP2_YCBCR_FRAME_END_BIT 4
@@ -223,13 +221,12 @@ void isp_bcm_configure(int path)
 	BCM_SCHED_Flush(1 << qid);
 
 	switch (path) {
-	case ISP_MP0_PATH:
+	case ISPSS_MTR_PATH_MP0_WR:
+	case ISPSS_MTR_PATH_MP1_WR:
 		flag = 1 << MP_YCBCR_FRAME_END_BIT;
 		break;
-	case ISP_SP1_PATH:
-		flag = 1 << SP1_YCBCR_FRAME_END_BIT;
-		break;
-	case ISP_SP2_PATH:
+	case ISPSS_MTR_PATH_SP2_WR0:
+	case ISPSS_MTR_PATH_SP2_WR1:
 		flag = 1 << SP2_YCBCR_FRAME_END_BIT;
 		break;
 	default:

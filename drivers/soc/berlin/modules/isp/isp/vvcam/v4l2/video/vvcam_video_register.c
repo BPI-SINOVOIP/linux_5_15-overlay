@@ -1251,7 +1251,7 @@ static void vvcam_video_vb2_stop_streaming(struct vb2_queue *queue)
     }
 #ifdef DOLPHIN
     if (vvcam_vdev->mmu_enabled)
-        ISPSS_MTR_Exit();
+        ISPSS_MTR_Exit(vvcam_isp_get_mtr_path(stream_status.pad));
 #endif
 
     return;

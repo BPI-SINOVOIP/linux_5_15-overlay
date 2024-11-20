@@ -267,7 +267,7 @@ void ISPSS_MTR_PrintInfo(struct ISPSS_MTR_CONFIG_PARAM *mtrConfigParam)
 	ISPSS_MTR_PrintRegisters(&mtrConfigParam->ispMtrObj);
 }
 
-void ISPSS_MTR_Exit(void)
+void ISPSS_MTR_Exit(uint32_t path)
 {
 	struct ISPSS_MTR_CONFIG_PARAM mtrConfigParam;
 
@@ -275,6 +275,6 @@ void ISPSS_MTR_Exit(void)
 	mtrConfigParam.ispMtrObj.uiIspMtrKickoff = 0;
 	mtrConfigParam.ispMtrObj.base_addr_ispMtr = MEMMAP_ISP_REG_BASE + ISP_MTR_REG_BASE;
 
-	ISPSS_MTR_Set_Global_Registers(&mtrConfigParam.ispMtrObj, ISPSS_MTR_PATH_MP0_WR, 0);
+	ISPSS_MTR_Set_Global_Registers(&mtrConfigParam.ispMtrObj, path, 0);
 }
 EXPORT_SYMBOL_GPL(ISPSS_MTR_Exit);

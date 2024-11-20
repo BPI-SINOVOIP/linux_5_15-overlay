@@ -20,7 +20,8 @@ static int vvcam_video_iommu_s_ctrl(struct v4l2_ctrl *ctrl)
 
     switch (ctrl->id) {
     case VVCAM_VIDEO_CID_IOMMU_ENABLED:
-        if (isp_dev->ctrl_pad == VVCAM_ISP_PAD_SOURCE_P0SP1) {
+        if (isp_dev->ctrl_pad == VVCAM_ISP_PAD_SOURCE_P0SP1 ||
+            isp_dev->ctrl_pad == VVCAM_ISP_PAD_SOURCE_P1SP1) {
             isp_dev->mmu_enabled = 0;
             dev_warn(isp_dev->dev, "%s MMU not supported on SP1 path\n", __func__);
         } else {

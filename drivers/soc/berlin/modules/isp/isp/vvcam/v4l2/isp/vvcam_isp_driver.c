@@ -188,11 +188,14 @@ uint32_t vvcam_isp_get_mtr_path(uint32_t pad_index)
     case VVCAM_ISP_PAD_SOURCE_P0MP:
         path = ISPSS_MTR_PATH_MP0_WR;
         break;
-    case VVCAM_ISP_PAD_SOURCE_P0SP1:
+    case VVCAM_ISP_PAD_SOURCE_P1MP:
         path = ISPSS_MTR_PATH_MP1_WR;
         break;
     case VVCAM_ISP_PAD_SOURCE_P0SP2:
         path = ISPSS_MTR_PATH_SP2_WR0;
+        break;
+    case VVCAM_ISP_PAD_SOURCE_P1SP2:
+        path = ISPSS_MTR_PATH_SP2_WR1;
         break;
     default:
         break;
@@ -290,7 +293,7 @@ static int vvcam_isp_pad_s_stream(struct v4l2_subdev *sd, void *arg)
     } else {
         ISPSS_CA_ClockGateSharedResources(ISPSS_CLK_STATE_ENABLE);
         ISPSS_MTR_QOS_Config(QOS_ENABLE);
-        isp_bcm_configure(pad_stream->pad);
+        isp_bcm_configure(vvcam_isp_get_mtr_path(pad_stream->pad));
     }
     ret = vvcam_isp_s_stream_event(isp_dev, pad_stream->pad, &pad_stream->param);
 #else
