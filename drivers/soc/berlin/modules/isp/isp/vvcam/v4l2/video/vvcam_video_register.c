@@ -332,6 +332,10 @@ static int vvcam_video_mfmt_to_vfmt(struct v4l2_subdev_format *mfmt, struct v4l2
     if (info->comp_planes == 1) {
         f->fmt.pix.bytesperline = bytesperline;
         f->fmt.pix.sizeimage = sizeimage;
+#ifdef DOLPHIN
+        f->fmt.pix_mp.plane_fmt[0].bytesperline = bytesperline;
+        f->fmt.pix_mp.plane_fmt[0].sizeimage = sizeimage;
+#endif
         return 0;
     }
 
