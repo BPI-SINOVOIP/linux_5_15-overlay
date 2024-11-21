@@ -35,6 +35,8 @@ static int syna_dsi_add_extra_modes(struct drm_connector *connector)
 	if (!IS_ERR(dev_priv->panel[0])) {
 		drm_panel_get_modes(dev_priv->panel[0], connector);
 		num_modes++;
+	} else {
+		connector->status = connector_status_disconnected;
 	}
 
 	num_modes++;
